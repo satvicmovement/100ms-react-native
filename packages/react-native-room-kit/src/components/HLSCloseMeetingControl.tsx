@@ -1,8 +1,8 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 
-import { CloseIcon } from '../Icons';
+//import { CloseIcon } from '../Icons';
 import { ModalTypes } from '../utils/types';
 import { useModalType } from '../hooks-util';
 
@@ -23,7 +23,7 @@ export const _HLSCloseMeetingControl: React.FC<HLSPlayerControlsProps> = ({
   return (
     <GestureDetector gesture={Gesture.Tap()}>
       <TouchableOpacity onPress={handleCloseBtnPress} style={styles.icon}>
-        <CloseIcon size="medium" />
+        <Text style={styles.btnTxt}>Leave</Text>
       </TouchableOpacity>
     </GestureDetector>
   );
@@ -35,5 +35,12 @@ const styles = StyleSheet.create({
   icon: {
     padding: 4,
     alignSelf: 'flex-start',
+    borderRadius: 7,
+    backgroundColor: '#ED5736',
+  },
+  btnTxt: {
+    fontSize: 16,
+    fontFamily: 'Nunito-SemiBold',
+    color: '#FFFFFF',
   },
 });

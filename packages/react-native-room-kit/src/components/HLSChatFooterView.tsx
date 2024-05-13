@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useHMSRoomStyleSheet } from '../hooks-util';
 import { HLSHandRaiseButton } from './HLSHandRaiseButton';
-import { HLSRoomOptionsButton } from './HLSRoomOptionsButton';
+//import { HLSRoomOptionsButton } from './HLSRoomOptionsButton';
 import { HLSManageChatTextInput } from './HLSManageChatTextInput';
 
 export const HLSChatFooterView = () => {
@@ -28,7 +28,7 @@ export const HLSChatFooterView = () => {
 
       <HLSHandRaiseButton />
 
-      <HLSRoomOptionsButton />
+      {/* <HLSRoomOptionsButton /> */}
     </SafeAreaView>
   );
 };

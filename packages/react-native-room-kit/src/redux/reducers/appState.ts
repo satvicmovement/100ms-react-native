@@ -103,7 +103,7 @@ const INITIAL_STATE: IntialStateType = {
   initialRole: null,
   chatPeerBlacklist: [],
   hlsDescriptionPaneVisible: false,
-  hlsFullScreen: false,
+  hlsFullScreen: true,
   hlsStreamPaused_android: false,
 };
 

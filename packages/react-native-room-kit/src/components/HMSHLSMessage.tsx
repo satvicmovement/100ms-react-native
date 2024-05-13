@@ -9,12 +9,7 @@ import {
 } from 'react-native';
 import type { HMSMessage } from '@100mslive/react-native-hms';
 
-import {
-  useAllowBlockingPeerFromChat,
-  useAllowPinningMessage,
-  useHMSRoomStyleSheet,
-  useModalType,
-} from '../hooks-util';
+import { useHMSRoomStyleSheet, useModalType } from '../hooks-util';
 import { PinIcon, ThreeDotsIcon } from '../Icons';
 import { setSelectedMessageForAction } from '../redux/actions';
 import { ModalTypes } from '../utils/types';
@@ -27,16 +22,6 @@ interface HMSHLSMessageProps {
 const _HMSHLSMessage: React.FC<HMSHLSMessageProps> = ({ message }) => {
   const dispatch = useDispatch();
   const { handleModalVisibleType } = useModalType();
-  const localPeerId = useSelector(
-    (state: RootState) => state.hmsStates.localPeer?.peerID
-  );
-
-  const allowPinningMessage = useAllowPinningMessage();
-  const allowPeerBlocking = useAllowBlockingPeerFromChat();
-  const canRemoveOthers = useSelector(
-    (state: RootState) =>
-      !!state.hmsStates.localPeer?.role?.permissions?.removeOthers
-  );
 
   const isPinned = useSelector(
     (state: RootState) =>
@@ -72,14 +57,7 @@ const _HMSHLSMessage: React.FC<HMSHLSMessageProps> = ({ message }) => {
     handleModalVisibleType(ModalTypes.MESSAGE_OPTIONS);
   };
 
-  const canTakeAction =
-    allowPinningMessage || // can pin message, OR
-    (allowPeerBlocking &&
-      message.sender &&
-      message.sender.peerID !== localPeerId) || // can block peers, OR
-    (canRemoveOthers &&
-      message.sender &&
-      message.sender.peerID !== localPeerId); // can remove participants
+  const canTakeAction = false;
 
   return (
     <View style={styles.container}>
