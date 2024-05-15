@@ -11,29 +11,25 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { HMSHLSPlayer } from '@100mslive/react-native-hms';
 
 import type { RootState } from '../redux';
-import { HLSGoLiveControl } from './HLSGoLiveControl';
-import { HLSSeekbar } from './HLSSeekbar';
+//import { HLSGoLiveControl } from './HLSGoLiveControl';
+//import { HLSSeekbar } from './HLSSeekbar';
 import { useIsLandscapeOrientation } from '../utils/dimension';
 import { HLSCloseMeetingControl } from './HLSCloseMeetingControl';
 import { HLSClosedCaptionControl } from './HLSClosedCaptionControl';
 import { HLSFullScreenControl } from './HLSFullScreenControl';
-import { HLSDistanceFromLive } from './HLSDistanceFromLive';
-import { HLSPlayPauseControl } from './HLSPlayPauseControl';
-import { HLSSeekbackwardControl } from './HLSSeekbackwardControl';
-import { HLSSeekforwardControl } from './HLSSeekforwardControl';
+//import { HLSDistanceFromLive } from './HLSDistanceFromLive';
+//import { HLSPlayPauseControl } from './HLSPlayPauseControl';
+//import { HLSSeekbackwardControl } from './HLSSeekbackwardControl';
+//import { HLSSeekforwardControl } from './HLSSeekforwardControl';
 
 interface HLSPlayerControlsProps {
   playerRef: React.RefObject<React.ElementRef<typeof HMSHLSPlayer>>;
-  cancelCurrentControlAnimation: () => void;
-  hideControlsAfterDelay: () => void;
   resetHideControlAnimation: () => void;
   animatedValue: SharedValue<number>;
 }
 
 export const _HLSPlayerControls: React.FC<HLSPlayerControlsProps> = ({
   playerRef,
-  cancelCurrentControlAnimation,
-  hideControlsAfterDelay,
   animatedValue,
   resetHideControlAnimation,
 }) => {
@@ -60,7 +56,7 @@ export const _HLSPlayerControls: React.FC<HLSPlayerControlsProps> = ({
   return (
     <React.Fragment>
       {/* Play/Pause Controls */}
-      <Animated.View
+      {/* <Animated.View
         animatedProps={hideControlsProps}
         style={[
           { height: '100%' },
@@ -91,7 +87,7 @@ export const _HLSPlayerControls: React.FC<HLSPlayerControlsProps> = ({
             onPress={resetHideControlAnimation}
           />
         </View>
-      </Animated.View>
+      </Animated.View> */}
 
       {/* Header Controls */}
       <Animated.View
@@ -129,11 +125,11 @@ export const _HLSPlayerControls: React.FC<HLSPlayerControlsProps> = ({
         >
           <View style={styles.controlsRow}>
             <View style={styles.normalRow}>
-              <HLSGoLiveControl
+              {/* <HLSGoLiveControl
                 playerRef={playerRef}
                 onPress={resetHideControlAnimation}
               />
-              <HLSDistanceFromLive />
+              <HLSDistanceFromLive /> */}
             </View>
 
             <View style={[styles.normalRow, styles.gap]}>
@@ -141,11 +137,11 @@ export const _HLSPlayerControls: React.FC<HLSPlayerControlsProps> = ({
             </View>
           </View>
 
-          <HLSSeekbar
+          {/* <HLSSeekbar
             playerRef={playerRef}
             onStart={cancelCurrentControlAnimation}
             onEnd={hideControlsAfterDelay}
-          />
+          /> */}
         </View>
       </Animated.View>
     </React.Fragment>

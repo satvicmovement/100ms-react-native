@@ -85,8 +85,6 @@ export const _HLSPlayerContainer: React.FC = () => {
         <HLSPlayerControls
           playerRef={hlsPlayerRef}
           animatedValue={animatedValue}
-          cancelCurrentControlAnimation={cancelCurrentControlAnimation}
-          hideControlsAfterDelay={hideControlsAfterDelay}
           resetHideControlAnimation={resetHideControlAnimation}
         />
       </View>
