@@ -1,5 +1,6 @@
 import * as React from 'react';
 import {
+  Keyboard,
   Platform,
   StyleSheet,
   TextInput,
@@ -15,7 +16,7 @@ import type {
 } from 'react-native';
 
 import { useHMSRoomColorPalette, useHMSRoomStyleSheet } from '../hooks-util';
-import { SendIcon } from '../Icons';
+import { SendIcon, CloseIcon } from '../Icons';
 
 export type HMSTextInputProps = TextInputProps & {
   value: string;
@@ -36,8 +37,9 @@ export type HMSTextInputProps = TextInputProps & {
         onSendIconPress(): void;
         containerStyle?: StyleProp<ViewStyle>;
         focusedContainerStyle?: StyleProp<ViewStyle>;
+        hideKBIcon: boolean;
       }
-    | { rightIcon?: undefined; sendIcon?: undefined }
+    | { rightIcon?: undefined; sendIcon?: undefined; hideKBIcon?: undefined }
   );
 
 export const HMSTextInput: React.FC<HMSTextInputProps> = ({
@@ -158,6 +160,21 @@ export const HMSTextInput: React.FC<HMSTextInputProps> = ({
     <View style={containerStyles}>
       {resetProps.leftIcon}
 
+      {resetProps.rightIcon ||
+        (resetProps.hideKBIcon && inputFocused ? (
+          <TouchableOpacity
+            style={styles.hideKBIconButton}
+            onPress={Keyboard.dismiss}
+          >
+            <CloseIcon
+              style={[
+                hmsRoomStyles.sendIcon,
+                inputFocused ? hmsRoomStyles.focusedSendIcon : null,
+              ]}
+            />
+          </TouchableOpacity>
+        ) : null)}
+
       {textInputComp}
 
       {resetProps.rightIcon ||
@@ -184,7 +201,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 50,
     overflow: 'hidden',
-    paddingLeft: 16,
+    paddingLeft: 8,
     paddingRight: 8,
     borderRadius: 8,
     borderWidth: 2,
@@ -212,5 +229,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
+  },
+  hideKBIconButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
   },
 });
