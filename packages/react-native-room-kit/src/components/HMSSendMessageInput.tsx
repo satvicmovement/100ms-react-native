@@ -43,6 +43,7 @@ export const HMSSendMessageInput: React.FC<HMSSendMessageInputProps> = ({
       onSendIconPress={sendMessage}
       onSubmitEditing={sendMessage}
       returnKeyType="send"
+      hideKBIcon={true}
     />
   );
 };
