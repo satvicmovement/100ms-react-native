@@ -3,7 +3,7 @@ import { StyleSheet, TouchableOpacity } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 
-import { MaximizeIcon, MinimizeIcon } from '../Icons';
+import { MaximizeIcon, ChatIcon } from '../Icons';
 import type { RootState } from '../redux';
 import { setHlsFullScreen } from '../redux/actions';
 
@@ -27,7 +27,7 @@ export const _HLSFullScreenControl: React.FC<HLSFullScreenControlProps> = ({
     <GestureDetector gesture={Gesture.Tap()}>
       <TouchableOpacity onPress={toggleFullScreen} style={styles.icon}>
         {hlsFullScreen ? (
-          <MinimizeIcon size="medium" />
+          <ChatIcon type="off" />
         ) : (
           <MaximizeIcon size="medium" />
         )}
