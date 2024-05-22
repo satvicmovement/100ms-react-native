@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Platform,
   TouchableOpacity,
+  Linking,
 } from 'react-native';
 import type { HMSMessage } from '@100mslive/react-native-hms';
 
@@ -57,6 +58,45 @@ const _HMSHLSMessage: React.FC<HMSHLSMessageProps> = ({ message }) => {
     handleModalVisibleType(ModalTypes.MESSAGE_OPTIONS);
   };
 
+  const handleLinkPress = async (url: string) => {
+    const canOpen = await Linking.canOpenURL(url);
+    if (canOpen) {
+      Linking.openURL(url);
+    }
+  };
+
+  const _splitLinksAndContent = (
+    text: string,
+    { pressHandler, style }: any
+  ): string | (string | React.ReactElement)[] => {
+    // Regular expression to find links in a string
+    const pattern = /http[s]?:\/\/\S+/g;
+
+    // Find all links in the text
+    const links = text.match(pattern) || [];
+
+    if (links.length <= 0) {
+      return text;
+    }
+
+    // Split the text into an array of links and content
+    const parts = text.replace(pattern, '^<link>^').split('^');
+
+    return parts.map((p, i) => {
+      if (p !== '<link>') {
+        return p;
+      }
+      const link = links.pop();
+      return link ? (
+        <Text key={link + i} onPress={() => pressHandler(link)} style={style}>
+          {link}
+        </Text>
+      ) : (
+        p
+      );
+    });
+  };
+
   const canTakeAction = false;
 
   return (
@@ -83,8 +123,10 @@ const _HMSHLSMessage: React.FC<HMSHLSMessageProps> = ({ message }) => {
               : 'Anonymous'}
             {'   '}
           </Text>
-
-          {message.message}
+          {_splitLinksAndContent(message.message, {
+            pressHandler: handleLinkPress,
+            style: styles.link,
+          })}
         </Text>
 
         {canTakeAction ? (
@@ -146,5 +188,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     lineHeight: 16,
     letterSpacing: 1.5,
+  },
+  link: {
+    color: '#6C9CD1',
   },
 });
