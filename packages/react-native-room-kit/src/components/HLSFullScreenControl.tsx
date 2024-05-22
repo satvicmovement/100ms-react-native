@@ -1,9 +1,9 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 
-import { MaximizeIcon, ChatIcon } from '../Icons';
+import { MaximizeIcon } from '../Icons';
 import type { RootState } from '../redux';
 import { setHlsFullScreen } from '../redux/actions';
 
@@ -25,9 +25,12 @@ export const _HLSFullScreenControl: React.FC<HLSFullScreenControlProps> = ({
 
   return (
     <GestureDetector gesture={Gesture.Tap()}>
-      <TouchableOpacity onPress={toggleFullScreen} style={styles.icon}>
+      <TouchableOpacity
+        onPress={toggleFullScreen}
+        style={[styles.icon, hlsFullScreen ? styles.iconbkgc : styles.iconbkgt]}
+      >
         {hlsFullScreen ? (
-          <ChatIcon type="off" />
+          <Text style={styles.btnTxt}>Chat</Text>
         ) : (
           <MaximizeIcon size="medium" />
         )}
@@ -42,5 +45,17 @@ const styles = StyleSheet.create({
   icon: {
     padding: 4,
     alignSelf: 'flex-start',
+  },
+  iconbkgt: {
+    backgroundColor: 'transparent',
+  },
+  iconbkgc: {
+    borderRadius: 7,
+    backgroundColor: '#FFFFFF',
+  },
+  btnTxt: {
+    fontSize: 16,
+    fontFamily: 'Nunito-SemiBold',
+    color: 'black',
   },
 });
