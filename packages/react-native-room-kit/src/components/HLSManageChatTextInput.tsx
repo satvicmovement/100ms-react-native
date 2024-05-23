@@ -24,6 +24,9 @@ export const HLSManageChatTextInput = () => {
   const isChatRecipientSelected = useSelector(
     (state: RootState) => state.chatWindow.sendTo !== null
   );
+  const isSMChatEnabled = useSelector(
+    (state: RootState) => state.app.smChatEnabled
+  );
   const isLocalPeerBlockedFromChat = useIsLocalPeerBlockedFromChat();
 
   const hmsRoomStyles = useHMSRoomStyleSheet((theme) => ({
@@ -49,29 +52,31 @@ export const HLSManageChatTextInput = () => {
   }
 
   if (chatState.enabled) {
-    return (
-      <>
-        {/* INFO: Chat action button UI might be broken,
-        but hls-viewer might not have permission to take action */}
-        <View style={styles.grow}>
-          <ChatFilterBottomSheetOpener useFilterModal={true} />
-
-          {isAllowedToSendMessage && isChatRecipientSelected ? (
-            <HMSKeyboardAvoidingView
-              bottomOffset={bottomInset}
-              styleWhenActive={keyboardAvoidingStyles.active}
-              styleWhenInactive={keyboardAvoidingStyles.inactive}
-            >
-              <HMSSendMessageInput
-                containerStyle={[styles.input, hmsRoomStyles.input]}
-              />
-            </HMSKeyboardAvoidingView>
-          ) : null}
-        </View>
-
-        <ChatFilterBottomSheet />
-      </>
-    );
+    if (isSMChatEnabled) {
+      return (
+        <>
+          {/* INFO: Chat action button UI might be broken,
+          but hls-viewer might not have permission to take action */}
+          <View style={styles.grow}>
+            <ChatFilterBottomSheetOpener useFilterModal={true} />
+            {isAllowedToSendMessage && isChatRecipientSelected ? (
+              <HMSKeyboardAvoidingView
+                bottomOffset={bottomInset}
+                styleWhenActive={keyboardAvoidingStyles.active}
+                styleWhenInactive={keyboardAvoidingStyles.inactive}
+              >
+                <HMSSendMessageInput
+                  containerStyle={[styles.input, hmsRoomStyles.input]}
+                />
+              </HMSKeyboardAvoidingView>
+            ) : null}
+          </View>
+          <ChatFilterBottomSheet />
+        </>
+      );
+    } else {
+      return null;
+    }
   }
 
   if (isAllowedToSendMessage) {

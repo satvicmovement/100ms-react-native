@@ -65,6 +65,7 @@ type IntialStateType = {
   hlsDescriptionPaneVisible: boolean;
   hlsFullScreen: boolean;
   hlsStreamPaused_android: boolean;
+  smChatEnabled: boolean;
 };
 
 const INITIAL_STATE: IntialStateType = {
@@ -105,6 +106,7 @@ const INITIAL_STATE: IntialStateType = {
   hlsDescriptionPaneVisible: false,
   hlsFullScreen: true,
   hlsStreamPaused_android: false,
+  smChatEnabled: true,
 };
 
 const appReducer = (
@@ -274,11 +276,8 @@ const appReducer = (
     case ActionTypes.UPDATE_SCREENSHARE_TILE: {
       return {
         ...state,
-        screensharePeerTrackNodes: state.screensharePeerTrackNodes.map(
-          (node) =>
-            node.id === action.payload.id
-              ? { ...node, ...action.payload }
-              : node
+        screensharePeerTrackNodes: state.screensharePeerTrackNodes.map((node) =>
+          node.id === action.payload.id ? { ...node, ...action.payload } : node
         ),
       };
     }
@@ -379,6 +378,12 @@ const appReducer = (
       return {
         ...state,
         hlsStreamPaused_android: action.payload.hlsStreamPaused_android,
+      };
+    }
+    case ActionTypes.SET_SM_CHAT_ENABLED: {
+      return {
+        ...state,
+        smChatEnabled: action.payload.chatenabled,
       };
     }
     case HmsStateActionTypes.CLEAR_STATES:

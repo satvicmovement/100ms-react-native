@@ -491,6 +491,11 @@ export const setAndroidHLSStreamPaused = (paused: boolean) => ({
   payload: { hlsStreamPaused_android: paused },
 });
 
+export const setSMChatEnabled = (chatenabled: boolean) => ({
+  type: actionTypes.SET_SM_CHAT_ENABLED,
+  payload: { chatenabled },
+});
+
 /**
  * POLLS
  */

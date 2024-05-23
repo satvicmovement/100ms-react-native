@@ -12,7 +12,8 @@ export const HLSChatMessages = () => {
   const messages = useSelector((state: RootState) => state.messages.messages);
 
   const _keyExtractor = React.useCallback(
-    (item: HMSMessage) => item.messageId,
+    (item: HMSMessage) =>
+      item.messageId.length > 0 ? item.messageId : item.time.toString(),
     []
   );
 

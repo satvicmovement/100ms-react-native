@@ -116,6 +116,7 @@ import {
   setPrebuiltData,
   setReconnecting,
   setRoleChangeRequest,
+  setSMChatEnabled,
   setStartingOrStoppingRecording,
   updateFullScreenPeerTrackNode,
   updateLocalPeerTrackNode,
@@ -1344,6 +1345,12 @@ export const useHMSMessages = () => {
       } else if (message.type === 'EMOJI_REACTION') {
         console.log('Ignoring Emoji Reaction Message: ', message);
       } else if (canShowChat) {
+        //one more condition required
+        if (message.message === 'Chat is disabled now') {
+          dispatch(setSMChatEnabled(false));
+        } else if (message.message === 'Chat is enabled now') {
+          dispatch(setSMChatEnabled(true));
+        }
         dispatch(addMessage(message));
       }
     };
