@@ -1345,10 +1345,18 @@ export const useHMSMessages = () => {
       } else if (message.type === 'EMOJI_REACTION') {
         console.log('Ignoring Emoji Reaction Message: ', message);
       } else if (canShowChat) {
-        //one more condition required
-        if (message.message === 'Chat is disabled now') {
+        //usage of name and peerID temporarily
+        if (
+          message.message === 'Chat is disabled now' &&
+          !message.sender?.name &&
+          !message.sender?.peerID
+        ) {
           dispatch(setSMChatEnabled(false));
-        } else if (message.message === 'Chat is enabled now') {
+        } else if (
+          message.message === 'Chat is enabled now' &&
+          !message.sender?.name &&
+          !message.sender?.peerID
+        ) {
           dispatch(setSMChatEnabled(true));
         }
         dispatch(addMessage(message));
