@@ -2641,6 +2641,7 @@ export const useSavePropsToStore = (
     onLeave,
     handleBackButton,
     autoEnterPipMode,
+    smAppProps,
   } = props;
 
   dispatch(setPrebuiltData({ roomCode, token, options }));
@@ -2655,6 +2656,13 @@ export const useSavePropsToStore = (
   useEffect(() => {
     dispatch(setOnLeaveHandler(onLeave));
   }, [onLeave]);
+
+  useEffect(() => {
+    if (smAppProps) {
+      dispatch(setSMChatEnabled(smAppProps.chatEnabled));
+    }
+    //check if default init in redux store suffices or not
+  }, [smAppProps]);
 
   useEffect(() => {
     if (Platform.OS === 'android') {

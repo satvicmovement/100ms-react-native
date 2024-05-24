@@ -60,6 +60,10 @@ export interface HMSPrebuiltCommonProps {
    * ```
    */
   autoEnterPipMode?: boolean;
+
+  smAppProps?: {
+    chatEnabled: boolean;
+  };
 }
 
 export type HMSPrebuiltConditionalProps =
