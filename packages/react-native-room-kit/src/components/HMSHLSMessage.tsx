@@ -59,9 +59,11 @@ const _HMSHLSMessage: React.FC<HMSHLSMessageProps> = ({ message }) => {
   };
 
   const handleLinkPress = async (url: string) => {
-    const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
-      Linking.openURL(url);
+    if (!message.sender?.name && !message.sender?.peerID) {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        Linking.openURL(url);
+      }
     }
   };
 
