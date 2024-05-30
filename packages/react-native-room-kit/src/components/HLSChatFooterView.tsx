@@ -4,8 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useHMSRoomStyleSheet } from '../hooks-util';
 import { HLSHandRaiseButton } from './HLSHandRaiseButton';
-//import { HLSRoomOptionsButton } from './HLSRoomOptionsButton';
+import { HLSRoomOptionsButton } from './HLSRoomOptionsButton';
 import { HLSManageChatTextInput } from './HLSManageChatTextInput';
+import type { RootState } from '../redux';
+import { useSelector } from 'react-redux';
 
 export const HLSChatFooterView = () => {
   const hmsRoomStyles = useHMSRoomStyleSheet((theme) => ({
@@ -19,6 +21,11 @@ export const HLSChatFooterView = () => {
     },
   }));
 
+  const pollDataAvailable = useSelector((state: RootState) => {
+    const pollsData = state.polls;
+    return Object.keys(pollsData.polls).length > 0;
+  });
+
   return (
     <SafeAreaView
       edges={['bottom']}
@@ -28,7 +35,7 @@ export const HLSChatFooterView = () => {
 
       <HLSHandRaiseButton />
 
-      {/* <HLSRoomOptionsButton /> */}
+      {pollDataAvailable === true ? <HLSRoomOptionsButton /> : null}
     </SafeAreaView>
   );
 };

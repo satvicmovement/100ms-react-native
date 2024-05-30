@@ -10,17 +10,17 @@ import {
   ChangeAudioMixingModeModal,
   ChangeAudioModeModal,
   ChangeAudioOutputModal,
-  ChangeBulkRoleModal,
-  ChangeTrackStateForRoleModal,
-  HlsStreamingModal,
-  RecordingModal,
-  RtcStatsModal,
+  // ChangeBulkRoleModal,
+  // ChangeTrackStateForRoleModal,
+  // HlsStreamingModal,
+  // RecordingModal,
+  // RtcStatsModal,
 } from './Modals';
 import { ModalTypes } from '../utils/types';
 import { useModalType } from '../hooks-util';
 import { BottomSheet } from './BottomSheet';
 import { ChangeNameModalContent } from './ChangeNameModalContent';
-import { StopRecordingModalContent } from './StopRecordingModalContent';
+//import { StopRecordingModalContent } from './StopRecordingModalContent';
 import { TestIds } from '../utils/constants';
 import { PollsAndQuizBottomSheet } from './PollsAndQuizBottomSheet';
 
@@ -82,42 +82,42 @@ export const HMSRoomOptions: React.FC<HMSRoomOptionsProps> = () => {
         <ChangeNameModalContent dismissModal={dismissModal} />
       </BottomSheet>
 
-      <BottomSheet
+      {/* <BottomSheet
         isVisible={modalVisible === ModalTypes.STOP_RECORDING}
         dismissModal={dismissModal}
       >
         <StopRecordingModalContent dismissModal={dismissModal} />
-      </BottomSheet>
+      </BottomSheet> */}
 
-      <DefaultModal
+      {/* <DefaultModal
         animationIn={'slideInUp'}
         animationOut={'slideOutDown'}
         modalVisible={modalVisible === ModalTypes.RTC_STATS}
         setModalVisible={dismissModal}
       >
         <RtcStatsModal />
-      </DefaultModal>
-      <DefaultModal
+      </DefaultModal> */}
+      {/* <DefaultModal
         modalPosiion="center"
         modalVisible={modalVisible === ModalTypes.RECORDING}
         setModalVisible={dismissModal}
       >
         <RecordingModal setModalVisible={setModalVisible} />
-      </DefaultModal>
-      <DefaultModal
+      </DefaultModal> */}
+      {/* <DefaultModal
         modalPosiion="center"
         modalVisible={modalVisible === ModalTypes.HLS_STREAMING}
         setModalVisible={dismissModal}
       >
         <HlsStreamingModal cancelModal={dismissModal} />
-      </DefaultModal>
-      <DefaultModal
+      </DefaultModal> */}
+      {/* <DefaultModal
         modalPosiion="center"
         modalVisible={modalVisible === ModalTypes.CHANGE_TRACK_ROLE}
         setModalVisible={dismissModal}
       >
         <ChangeTrackStateForRoleModal cancelModal={dismissModal} />
-      </DefaultModal>
+      </DefaultModal> */}
       <DefaultModal
         modalPosiion="center"
         modalVisible={modalVisible === ModalTypes.SWITCH_AUDIO_OUTPUT}
@@ -147,13 +147,13 @@ export const HMSRoomOptions: React.FC<HMSRoomOptionsProps> = () => {
           cancelModal={dismissModal}
         />
       </DefaultModal>
-      <DefaultModal
+      {/* <DefaultModal
         modalPosiion="center"
         modalVisible={modalVisible === ModalTypes.BULK_ROLE_CHANGE}
         setModalVisible={dismissModal}
       >
         <ChangeBulkRoleModal cancelModal={dismissModal} />
-      </DefaultModal>
+      </DefaultModal> */}
     </View>
   );
 };
