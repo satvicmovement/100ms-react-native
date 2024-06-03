@@ -9,7 +9,7 @@ import { HLSChatMessages } from './HLSChatMessages';
 import { HLSDescriptionPane } from './HLSDescriptionPane';
 import { useIsLandscapeOrientation } from '../utils/dimension';
 import type { RootState } from '../redux';
-import { HLSNotifications } from './HLSNotifications';
+//import { HLSNotifications } from './HLSNotifications';
 
 export const HLSChatView = () => {
   const isLandscapeOrientation = useIsLandscapeOrientation();
@@ -44,8 +44,8 @@ export const HLSChatView = () => {
         <HLSChatMessages />
 
         <HLSChatFooterView />
-
-        <HLSNotifications />
+        {/* Moved to HLSViewerScreenContent */}
+        {/* <HLSNotifications /> */}
 
         {/* Below is absolute positioned and only visible when state is true */}
         {isLandscapeOrientation ? null : <HLSDescriptionPane />}

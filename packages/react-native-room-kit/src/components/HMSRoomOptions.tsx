@@ -22,7 +22,6 @@ import { BottomSheet } from './BottomSheet';
 import { ChangeNameModalContent } from './ChangeNameModalContent';
 //import { StopRecordingModalContent } from './StopRecordingModalContent';
 import { TestIds } from '../utils/constants';
-import { PollsAndQuizBottomSheet } from './PollsAndQuizBottomSheet';
 
 interface HMSRoomOptionsProps {}
 
@@ -71,8 +70,8 @@ export const HMSRoomOptions: React.FC<HMSRoomOptionsProps> = () => {
           setMuteAllTracksAudio={setMuteAllTracksAudio}
         />
       </BottomSheet>
-
-      <PollsAndQuizBottomSheet />
+      {/* Moved to HLSViewerScreenContent */}
+      {/* <PollsAndQuizBottomSheet /> */}
 
       <BottomSheet
         isVisible={modalVisible === ModalTypes.CHANGE_NAME}

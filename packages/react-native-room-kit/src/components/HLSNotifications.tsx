@@ -26,7 +26,7 @@ export const HLSNotifications = React.memo(_HLSNotifications);
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    width: '100%',
+    width: '50%',
     bottom: 0,
     zIndex: 1,
   },

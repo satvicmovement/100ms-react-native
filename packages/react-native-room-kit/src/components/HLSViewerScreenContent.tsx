@@ -20,6 +20,8 @@ import { ChangeAspectRatio } from './Modals';
 import type { RootState } from '../redux';
 import { HLSChatView } from './HLSChatView';
 import { useIsLandscapeOrientation } from '../utils/dimension';
+import { HLSNotifications } from './HLSNotifications';
+import { PollsAndQuizBottomSheet } from './PollsAndQuizBottomSheet';
 
 interface HLSViewerScreenContentProps {}
 
@@ -60,6 +62,9 @@ export const HLSViewerScreenContent: React.FC<
         <HLSPlayerContainer />
 
         <HLSChatView />
+        {/* added from HLSChatView */}
+        <HLSNotifications />
+        <PollsAndQuizBottomSheet />
       </SafeAreaView>
 
       {isPipModeActive ? null : (
