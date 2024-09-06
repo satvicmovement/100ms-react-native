@@ -6,7 +6,9 @@ import type {
   HMSRoleChangeRequest,
   HMSRoom,
   HMSSpeaker,
+  HMSWhiteboard,
 } from '@100mslive/react-native-hms';
+import type { HMSVirtualBackgroundPlugin } from '../../modules/videoPluginWrapper';
 import type { Layout } from '@100mslive/types-prebuilt';
 import { HmsStateActionTypes } from '../actionTypes';
 
@@ -31,7 +33,9 @@ type ActionType =
   | ReplaceParticipantsList
   | SetActiveSpeakers
   | SetReconnecting
-  | SetNoiseCancellationPlugin;
+  | SetNoiseCancellationPlugin
+  | SetVideoPlugin
+  | SetWhiteboard;
 
 type SetRoomAction = {
   type: HmsStateActionTypes.SET_ROOM_STATE;
@@ -138,6 +142,16 @@ type SetNoiseCancellationPlugin = {
   noiseCancellationPlugin: HMSNoiseCancellationPlugin;
 };
 
+type SetVideoPlugin = {
+  type: HmsStateActionTypes.SET_VIDEO_PLUGIN;
+  videoPlugin: HMSVirtualBackgroundPlugin;
+};
+
+type SetWhiteboard = {
+  type: HmsStateActionTypes.SET_WHITEBOARD;
+  whiteboard: HMSWhiteboard | null;
+};
+
 type IntialStateType = {
   isLocalAudioMuted: boolean | undefined;
   isLocalVideoMuted: boolean | undefined;
@@ -153,6 +167,8 @@ type IntialStateType = {
   layoutConfig: Layout[] | null;
   roleChangeRequest: HMSRoleChangeRequest | null;
   noiseCancellationPlugin: HMSNoiseCancellationPlugin | null;
+  videoPlugin: HMSVirtualBackgroundPlugin | null;
+  whiteboard: HMSWhiteboard | null;
 };
 
 const INITIAL_STATE: IntialStateType = {
@@ -170,6 +186,8 @@ const INITIAL_STATE: IntialStateType = {
   layoutConfig: null,
   roleChangeRequest: null,
   noiseCancellationPlugin: null,
+  videoPlugin: null,
+  whiteboard: null,
 };
 
 const hmsStatesReducer = (
@@ -570,6 +588,16 @@ const hmsStatesReducer = (
       return {
         ...state,
         noiseCancellationPlugin: action.noiseCancellationPlugin,
+      };
+    case HmsStateActionTypes.SET_VIDEO_PLUGIN:
+      return {
+        ...state,
+        videoPlugin: action.videoPlugin,
+      };
+    case HmsStateActionTypes.SET_WHITEBOARD:
+      return {
+        ...state,
+        whiteboard: action.whiteboard,
       };
     case HmsStateActionTypes.CLEAR_STATES:
       return INITIAL_STATE;

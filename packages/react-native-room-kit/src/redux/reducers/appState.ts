@@ -50,6 +50,7 @@ type IntialStateType = {
   gridViewActivePage: number;
   startingOrStoppingRecording: boolean;
   fullScreenPeerTrackNode: null | PeerTrackNode;
+  fullScreenWhiteboard: boolean;
   screensharePeerTrackNodes: PeerTrackNode[];
   notifications: Notification[];
   activeChatBottomSheetTab: (typeof ChatBottomSheetTabs)[number];
@@ -66,6 +67,8 @@ type IntialStateType = {
   hlsFullScreen: boolean;
   hlsStreamPaused_android: boolean;
   smChatEnabled: boolean;
+  selectedVirtualBackground: string | null;
+  showClosedCaptions: boolean;
 };
 
 const INITIAL_STATE: IntialStateType = {
@@ -91,6 +94,7 @@ const INITIAL_STATE: IntialStateType = {
   gridViewActivePage: 0,
   startingOrStoppingRecording: false,
   fullScreenPeerTrackNode: null,
+  fullScreenWhiteboard: false,
   screensharePeerTrackNodes: [],
   notifications: [],
   activeChatBottomSheetTab: ChatBottomSheetTabs[0],
@@ -107,6 +111,8 @@ const INITIAL_STATE: IntialStateType = {
   hlsFullScreen: true,
   hlsStreamPaused_android: false,
   smChatEnabled: true,
+  selectedVirtualBackground: null,
+  showClosedCaptions: false,
 };
 
 const appReducer = (
@@ -242,6 +248,12 @@ const appReducer = (
           ...state.fullScreenPeerTrackNode,
           ...action.payload,
         },
+      };
+    }
+    case ActionTypes.SET_FULLSCREEN_WHITEBOARD: {
+      return {
+        ...state,
+        fullScreenWhiteboard: action.payload.fullScreenWhiteboard,
       };
     }
     case ActionTypes.SET_STARTING_HLS_STREAM:
@@ -384,6 +396,18 @@ const appReducer = (
       return {
         ...state,
         smChatEnabled: action.payload.chatenabled,
+      };
+    }
+    case ActionTypes.SET_SELECTED_VIRTUAL_BG: {
+      return {
+        ...state,
+        selectedVirtualBackground: action.payload.selectedVirtualBackground,
+      };
+    }
+    case ActionTypes.SET_SHOW_CLOSED_CAPTIONS: {
+      return {
+        ...state,
+        showClosedCaptions: action.payload.showClosedCaptions,
       };
     }
     case HmsStateActionTypes.CLEAR_STATES:

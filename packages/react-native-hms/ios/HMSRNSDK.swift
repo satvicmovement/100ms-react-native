@@ -8,8 +8,10 @@
 import Foundation
 import HMSSDK
 import ReplayKit
+import AVKit
+import SwiftUI
 
-class HMSRNSDK: HMSUpdateListener, HMSPreviewListener {
+class HMSRNSDK: NSObject, HMSUpdateListener, HMSPreviewListener {
 
     var hms: HMSSDK?
     var interactivity: HMSRNInteractivityCenter?
@@ -33,27 +35,53 @@ class HMSRNSDK: HMSUpdateListener, HMSPreviewListener {
     private var peerListIterators = [String: HMSPeerListIterator]()
     private var roomMutedLocally = false
     private var noiseCancellationPlugin: HMSNoiseCancellationPlugin?
+    private var videoFilterPlugin: HMSVideoFilterPlugin?
+    private var virtualBackgroundPlugin: HMSVideoPlugin?
 
     // MARK: - Setup
     init(data: NSDictionary?, delegate manager: HMSManager?, uid id: String) {
+        super.init()
         preferredExtension = data?.value(forKey: "preferredExtension") as? String
         self.delegate = manager
         self.id = id
         DispatchQueue.main.async { [weak self] in
             var noiseCancellationPlugin: HMSNoiseCancellationPlugin?
+            var videoFilterPlugin: HMSVideoFilterPlugin?
+            var virtualBackgroundPlugin: HMSVideoPlugin?
 
             self?.hms = HMSSDK.build { sdk in
                 sdk.appGroup = data?.value(forKey: "appGroup") as? String
                 sdk.frameworkInfo = HMSHelper.getFrameworkInfo(data?.value(forKey: "frameworkInfo") as? NSDictionary)
-                let trackSettings = data?.value(forKey: "trackSettings") as? NSDictionary
-                let videoSettings = HMSHelper.getLocalVideoSettings(trackSettings?.value(forKey: "video") as? NSDictionary)
-                let audioSettingsDict = trackSettings?.value(forKey: "audio") as? NSDictionary
+                let trackSettingsDict = data?.value(forKey: "trackSettings") as? NSDictionary
+
+                // Video track settings
+                let videoSettingsDict = trackSettingsDict?.value(forKey: "video") as? NSDictionary
+                let videoPluginDict = videoSettingsDict?.value(forKey: "videoPlugin") as? NSDictionary
+                let videoPlugin = HMSHelper.getHMSVideoPlugin(videoPluginDict)
+
+                if let asVideoFilterPlugin = videoPlugin as? HMSVideoFilterPlugin {
+                    videoFilterPlugin = asVideoFilterPlugin
+                } else if #available(iOS 15.0, *) {
+                    let asVirtualBGPlugin = videoPlugin as? HMSVirtualBackgroundPlugin
+                    virtualBackgroundPlugin = asVirtualBGPlugin
+                }
+
+                let videoSettings = HMSHelper.getLocalVideoSettings(videoSettingsDict, videoPlugin)
+
+                // Audio track settings
+                let audioSettingsDict = trackSettingsDict?.value(forKey: "audio") as? NSDictionary
+
                 let value = audioSettingsDict?.value(forKey: "noiseCancellationPlugin") as? NSDictionary
                 noiseCancellationPlugin = HMSHelper.getHMSNoiseCancellationPlugin(value)
+
                 let audioSettings = HMSHelper.getLocalAudioSettings(audioSettingsDict, noiseCancellationPlugin, sdk, self?.delegate, id)
+
+                // Track Settings
                 sdk.trackSettings = HMSTrackSettings(videoSettings: videoSettings, audioSettings: audioSettings)
             }
             self?.noiseCancellationPlugin = noiseCancellationPlugin
+            self?.virtualBackgroundPlugin = virtualBackgroundPlugin
+            self?.videoFilterPlugin = videoFilterPlugin
             if let hms = self?.hms {
                 self?.interactivity = HMSRNInteractivityCenter(
                     hmssdk: hms,
@@ -748,7 +776,7 @@ class HMSRNSDK: HMSUpdateListener, HMSPreviewListener {
 
             if remoteAudioTrack != nil {
                 remoteAudioTrack?.setVolume(volume)
-                resolve?(true)
+                resolve?(nil)
             } else {
                 let errorMessage = "setVolume: No remote audio track not available"
                 reject?(errorMessage, errorMessage, nil)
@@ -1370,6 +1398,9 @@ class HMSRNSDK: HMSUpdateListener, HMSPreviewListener {
             case "isLargeRoom":
                 return ["isLargeRoom": hmsRoom.isLarge]
 
+            case "transcriptions":
+                return ["transcriptions": HMSDecoder.getTranscriptionStates(hmsRoom.transcriptionStates)]
+
             default:
                 return nil
         }
@@ -1507,6 +1538,18 @@ class HMSRNSDK: HMSUpdateListener, HMSPreviewListener {
             }
         }
 
+        if #available(iOS 15.0, *),
+            useActiveSpeakerInPIP,
+            let controller = pipController,
+            controller.isPictureInPictureActive,
+            track.kind == .video,
+            update == .trackRemoved,
+            pipModel?.track == track {
+
+            pipModel?.text = hms?.localPeer?.name
+            pipModel?.track = nil
+        }
+
         if eventsEnableStatus[HMSConstants.ON_TRACK_UPDATE] != true {
             return
         }
@@ -1534,6 +1577,35 @@ class HMSRNSDK: HMSUpdateListener, HMSPreviewListener {
     }
 
     func on(updated speakers: [HMSSpeaker]) {
+
+        if #available(iOS 15.0, *),
+           useActiveSpeakerInPIP,
+           let controller = pipController,
+           controller.isPictureInPictureActive,
+           let peer = speakers.first?.peer,
+           let track = peer.videoTrack {
+
+            if track.isMute() {
+                pipModel?.text = peer.name
+                pipModel?.track = nil
+            } else {
+                if peer.isLocal {
+                    if #available(iOS 16.0, *) {
+                        if AVCaptureSession().isMultitaskingCameraAccessSupported {
+                            pipModel?.text = nil
+                            pipModel?.track = track
+                            return
+                        }
+                    }
+                    pipModel?.text = peer.name
+                    pipModel?.track = nil
+                } else {
+                    pipModel?.text = nil
+                    pipModel?.track = track
+                }
+            }
+        }
+
         if eventsEnableStatus[HMSConstants.ON_SPEAKER] != true {
             return
         }
@@ -1657,6 +1729,15 @@ class HMSRNSDK: HMSUpdateListener, HMSPreviewListener {
         let remoteTrack = HMSDecoder.getHmsVideoTrack(track)
 
         self.delegate?.emitEvent(HMSConstants.ON_REMOTE_VIDEO_STATS, ["remoteVideoStats": remoteStats, "track": remoteTrack, "peer": decodedPeer, "id": self.id])
+    }
+
+    func on(transcripts: HMSTranscripts) {
+        if eventsEnableStatus[HMSConstants.ON_TRANSCRIPTS] != true {
+            return
+        }
+        let transcriptsArray = HMSDecoder.getHmsTranscripts(transcripts.transcripts)
+
+        self.delegate?.emitEvent(HMSConstants.ON_TRANSCRIPTS, ["id": self.id, "transcripts": transcriptsArray])
     }
 
     // MARK: - Simulcast
@@ -2153,6 +2234,387 @@ class HMSRNSDK: HMSUpdateListener, HMSPreviewListener {
         resolve?(isAvailable)
     }
 
+    // MARK: - Video Plugins Functions
+
+    func enableVideoPlugin(_ data: NSDictionary,
+                           _ resolve: RCTPromiseResolveBlock?,
+                           _ reject: RCTPromiseRejectBlock?) {
+        guard let videoPluginType = data.value(forKey: "type") as? String else {
+            let errorMessage = "\(#function) HMSVideoPlugin type not passed!"
+            reject?("6004", errorMessage, nil)
+            return
+        }
+        switch videoPluginType {
+        case "HMSVirtualBackgroundPlugin":
+            if #available(iOS 15.0, *) {
+                guard let virtualBackgroundPlugin = self.virtualBackgroundPlugin as? HMSVirtualBackgroundPlugin else {
+                    let errorMessage = "\(#function) Unable to cast `var virtualBackgroundPlugin` to type `HMSVirtualBackgroundPlugin`, It is \(String(describing: virtualBackgroundPlugin))"
+                    reject?("6004", errorMessage, nil)
+                    return
+                }
+                virtualBackgroundPlugin.activate()
+                resolve?(true)
+            } else {
+                let errorMessage = "\(#function) HMSVirtualBackgroundPlugin not available below iOS 15.0"
+                reject?("6004", errorMessage, nil)
+                return
+            }
+        case "HMSVideoFilterPlugin":
+            guard let videoFilterPlugin = self.videoFilterPlugin else {
+                let errorMessage = "\(#function) `videoFilterPlugin` is `nil`, Make sure you are passing `HMSVideoFilterPlugin` instance to `videoTrackSettings` in `HMSSDK.build`"
+                reject?("6004", errorMessage, nil)
+                return
+            }
+            videoFilterPlugin.activate()
+            resolve?(true)
+        default:
+            let errorMessage = "\(#function) Unknown HMSVideoPlugin type passed!"
+            reject?("6004", errorMessage, nil)
+            return
+        }
+    }
+
+    func disableVideoPlugin(_ data: NSDictionary,
+                            _ resolve: RCTPromiseResolveBlock?,
+                            _ reject: RCTPromiseRejectBlock?) {
+        guard let videoPluginType = data.value(forKey: "type") as? String else {
+            let errorMessage = "\(#function) HMSVideoPlugin `type` not passed!"
+            reject?("6004", errorMessage, nil)
+            return
+        }
+        switch videoPluginType {
+        case "HMSVirtualBackgroundPlugin":
+            if #available(iOS 15.0, *) {
+                guard let virtualBackgroundPlugin = self.virtualBackgroundPlugin as? HMSVirtualBackgroundPlugin else {
+                    let errorMessage = "\(#function) Unable to cast `var virtualBackgroundPlugin` to type `HMSVirtualBackgroundPlugin`, It is \(String(describing: virtualBackgroundPlugin))"
+                    reject?("6004", errorMessage, nil)
+                    return
+                }
+                virtualBackgroundPlugin.deactivate()
+                resolve?(true)
+            } else {
+                let errorMessage = "\(#function) HMSVirtualBackgroundPlugin not available below iOS 15.0"
+                reject?("6004", errorMessage, nil)
+                return
+            }
+        case "HMSVideoFilterPlugin":
+            guard let videoFilterPlugin = self.videoFilterPlugin else {
+                let errorMessage = "\(#function) `videoFilterPlugin` is `nil`, Make sure you are passing `HMSVideoFilterPlugin` instance to `videoTrackSettings` in `HMSSDK.build`"
+                reject?("6004", errorMessage, nil)
+                return
+            }
+            videoFilterPlugin.deactivate()
+            resolve?(true)
+        default:
+            let errorMessage = "\(#function) Unknown HMSVideoPlugin `type` passed!"
+            reject?("6004", errorMessage, nil)
+            return
+        }
+    }
+
+    func changeVirtualBackground(_ data: NSDictionary,
+                            _ resolve: RCTPromiseResolveBlock?,
+                            _ reject: RCTPromiseRejectBlock?) {
+        if #available(iOS 15.0, *) {
+            guard let backgroundDict = data.value(forKey: "background") as? NSDictionary
+            else {
+                let errorMessage = "\(#function) No background object passed!"
+                reject?("6004", errorMessage, nil)
+                return
+            }
+            guard let backgroundType = backgroundDict.value(forKey: "type") as? String
+            else {
+                let errorMessage = "\(#function) No background `type` passed!"
+                reject?("6004", errorMessage, nil)
+                return
+            }
+            guard let virtualBackgroundPlugin = self.virtualBackgroundPlugin as? HMSVirtualBackgroundPlugin else {
+                let errorMessage = "\(#function) Unable to cast `var virtualBackgroundPlugin` to type `HMSVirtualBackgroundPlugin`, It is \(String(describing: virtualBackgroundPlugin))"
+                reject?("6004", errorMessage, nil)
+                return
+            }
+            switch backgroundType {
+            case "blur":
+                virtualBackgroundPlugin.backgroundImage = nil
+                resolve?(true)
+            case "image":
+                guard let imageSource = backgroundDict.value(forKey: "source") as? NSDictionary else {
+                    let errorMessage = "\(#function) No background `source` passed for image!"
+                    reject?("6004", errorMessage, nil)
+                    return
+                }
+                DispatchQueue.main.async {
+                    guard let image = RCTConvert.uiImage(imageSource) else {
+                        let errorMessage = "\(#function) Unable to create `UIImage` from given background `source` object!"
+                        reject?("6004", errorMessage, nil)
+                        return
+                    }
+                    virtualBackgroundPlugin.backgroundImage = image
+                    resolve?(true)
+                }
+            default:
+                let errorMessage = "\(#function) Unknown background `type` passed!"
+                reject?("6004", errorMessage, nil)
+                return
+            }
+        } else {
+            let errorMessage = "\(#function) HMSVirtualBackgroundPlugin not available below iOS 15.0"
+            reject?("6004", errorMessage, nil)
+            return
+        }
+    }
+
+    func setVideoFilterParameter(_ data: NSDictionary,
+                                 _ resolve: RCTPromiseResolveBlock?,
+                                 _ reject: RCTPromiseRejectBlock?) {
+        guard let videoFilterPlugin = self.videoFilterPlugin else {
+            let errorMessage = "\(#function) `videoFilterPlugin` is `nil`, Make sure you are passing `HMSVideoFilterPlugin` instance to `videoTrackSettings` in `HMSSDK.build`"
+            reject?("6004", errorMessage, nil)
+            return
+        }
+        guard let filterType = data.value(forKey: "filter") as? String else {
+            let errorMessage = "\(#function) `filter` property not passed!"
+            reject?("6004", errorMessage, nil)
+            return
+        }
+        guard let filterValue = data.value(forKey: "value") as? NSNumber else {
+            let errorMessage = "\(#function) `value` property not passed!"
+            reject?("6004", errorMessage, nil)
+            return
+        }
+        switch filterType {
+        case "brightness":
+            videoFilterPlugin.brightness = CGFloat(truncating: filterValue)
+        case "contrast":
+            videoFilterPlugin.contrast = CGFloat(truncating: filterValue)
+        case "exposure":
+            videoFilterPlugin.exposure = CGFloat(truncating: filterValue)
+        case "hue":
+            videoFilterPlugin.hue = CGFloat(truncating: filterValue)
+        case "redness":
+            videoFilterPlugin.redness = CGFloat(truncating: filterValue)
+        case "saturation":
+            videoFilterPlugin.saturation = CGFloat(truncating: filterValue)
+        case "sharpness":
+            videoFilterPlugin.sharpness = CGFloat(truncating: filterValue)
+        case "smoothness":
+            videoFilterPlugin.smoothness = CGFloat(truncating: filterValue)
+        default:
+            let errorMessage = "\(#function) Unknown `filter` type passed!"
+            reject?("6004", errorMessage, nil)
+            return
+        }
+        resolve?(true)
+    }
+
+    // MARK: - WebRTC Transcriptions
+
+    func handleRealTimeTranscription(_ data: NSDictionary,
+                                     _ resolve: RCTPromiseResolveBlock?,
+                                     _ reject: RCTPromiseRejectBlock?) {
+        guard let action = data.value(forKey: "action") as? String else {
+            reject?("\(#function): `action` key not passed", "\(#function): `action` key not passed", nil)
+            return
+        }
+        switch action {
+        case "start":
+    startRealTimeTranscription(data, resolve, reject)
+            case "stop":
+    stopRealTimeTranscription(data, resolve, reject)
+        default:
+            reject?("\(#function): Unknown `action` key passed", "\(#function): Unknown `action` key passed", nil)
+        }
+    }
+
+    private func startRealTimeTranscription(_ data: NSDictionary,
+                                    _ resolve: RCTPromiseResolveBlock?,
+                                    _ reject: RCTPromiseRejectBlock?) {
+        guard let hmssdk = hms else {
+            reject?("\(#function): HMSSDK not available", "\(#function): HMSSDK not available", nil)
+            return
+        }
+        hmssdk.startTranscription { success, error in
+            if let error = error {
+                reject?(error.localizedDescription, error.localizedDescription, nil)
+                return
+            }
+            resolve?(success)
+        }
+    }
+
+    private func stopRealTimeTranscription(_ data: NSDictionary,
+                                   _ resolve: RCTPromiseResolveBlock?,
+                                   _ reject: RCTPromiseRejectBlock?) {
+        guard let hmssdk = hms else {
+            reject?("\(#function): HMSSDK not available", "\(#function): HMSSDK not available", nil)
+            return
+        }
+        hmssdk.stopTranscription { success, error in
+            if let error = error {
+                reject?(error.localizedDescription, error.localizedDescription, nil)
+                return
+            }
+            resolve?(success)
+        }
+    }
+
+    // MARK: - PIP Mode Support
+
+    internal var _pipVideoCallViewController: Any?
+
+    @available(iOS 15.0, *)
+    internal var pipVideoCallViewController: AVPictureInPictureVideoCallViewController? {
+        if _pipVideoCallViewController == nil {
+            _pipVideoCallViewController = AVPictureInPictureVideoCallViewController()
+        }
+        return _pipVideoCallViewController as? AVPictureInPictureVideoCallViewController
+    }
+
+    internal var _pipModel: Any?
+
+    @available(iOS 15.0, *)
+    internal var pipModel: HMSPipModel? {
+        if _pipModel == nil {
+            _pipModel = HMSPipModel()
+        }
+        return _pipModel as? HMSPipModel
+    }
+
+    internal var pipController: AVPictureInPictureController?
+
+    private var useActiveSpeakerInPIP: Bool = true
+
+    @available(iOS 15.0, *)
+    func setPictureInPictureParams(_ data: NSDictionary,
+                                   _ resolve: RCTPromiseResolveBlock?,
+                                   _ reject: RCTPromiseRejectBlock?) {
+
+        guard AVPictureInPictureController.isPictureInPictureSupported() else {
+            let errorMessage = "\(#function) PIP is not supported on this device"
+            reject?("6004", errorMessage, nil)
+            return
+        }
+
+        guard let uiView = UIApplication.shared.keyWindow?.rootViewController?.view else {
+            let errorMessage = "\(#function) Failed to setup PIP"
+            reject?("6004", errorMessage, nil)
+            return
+        }
+
+        pipModel?.pipViewEnabled = true
+
+        if let scaleType = data["scaleType"] as? String {
+            pipModel?.scaleType = getViewContentMode(scaleType)
+        } else {
+            pipModel?.scaleType = .scaleAspectFill
+        }
+
+        pipModel?.color = .black
+        pipModel?.text = hms?.localPeer?.name
+
+        let controller = UIHostingController(rootView: HMSPipView(model: pipModel!))
+
+        pipVideoCallViewController?.view.addConstrained(subview: controller.view)
+
+        if let ratio = data["aspectRatio"] as? [Int], ratio.count == 2 {
+            pipVideoCallViewController?.preferredContentSize = CGSize(width: ratio[0], height: ratio[1])
+        } else {
+            pipVideoCallViewController?.preferredContentSize = CGSize(width: uiView.frame.size.width, height: uiView.frame.size.height)
+        }
+
+        guard let pipVideoCallViewController = pipVideoCallViewController else {
+            let errorMessage = "\(#function) Failed to setup PIP"
+            reject?("6004", errorMessage, nil)
+            return
+        }
+
+        let pipContentSource = AVPictureInPictureController.ContentSource(activeVideoCallSourceView: uiView, contentViewController: pipVideoCallViewController)
+
+        pipController = AVPictureInPictureController(contentSource: pipContentSource)
+
+        pipController?.delegate = self
+
+        pipController?.canStartPictureInPictureAutomaticallyFromInline = true
+
+        if let autoEnterPIP = data["autoEnterPipMode"] as? Bool {
+            pipController?.canStartPictureInPictureAutomaticallyFromInline = autoEnterPIP
+        }
+
+        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification,
+                                               object: nil, queue: .main) { [weak self] _ in
+            self?.stopPIP(nil, nil)
+        }
+
+        resolve?(true)
+    }
+
+    func enterPipMode(_ resolve: RCTPromiseResolveBlock?,
+                      _ reject: RCTPromiseRejectBlock?) {
+        pipController?.startPictureInPicture()
+        resolve?(true)
+    }
+
+    func stopPIP(_ resolve: RCTPromiseResolveBlock?,
+                 _ reject: RCTPromiseRejectBlock?) {
+        pipController?.stopPictureInPicture()
+        resolve?(nil)
+    }
+
+    func disposePIP(_ resolve: RCTPromiseResolveBlock?,
+                    _ reject: RCTPromiseRejectBlock?) {
+        pipController = nil
+        _pipModel = nil
+        _pipVideoCallViewController = nil
+        NotificationCenter.default.removeObserver(UIApplication.didBecomeActiveNotification)
+        resolve?(nil)
+    }
+
+    func isPIPActive(_ resolve: RCTPromiseResolveBlock?,
+                     _ reject: RCTPromiseRejectBlock?) {
+        if pipController != nil && pipController!.isPictureInPictureActive {
+            resolve?(true)
+        } else {
+            resolve?(false)
+        }
+    }
+
+    /// Change the video track in PIP Mode
+    /// - Parameters:
+    ///   - data: Data containing the trackId of the video track to be changed
+    ///   - resolve: Promise resolve block
+    ///   - reject: Promise reject block
+    @available(iOS 15.0, *)
+    func changeIOSPIPVideoTrack(_ data: NSDictionary,
+                                _ resolve: RCTPromiseResolveBlock?,
+                                _ reject: RCTPromiseRejectBlock?) {
+
+        guard let trackID = data["trackId"] as? String,
+              let room = hms?.room,
+              let track = HMSUtilities.getVideoTrack(for: trackID, in: room)
+        else {
+            let errorMessage = "\(#function) Incorrect data passed for changing track in PIP Mode"
+            reject?("6004", errorMessage, nil)
+            return
+        }
+
+        useActiveSpeakerInPIP = false
+        pipModel?.track = track
+        resolve?(nil)
+    }
+
+    func setActiveSpeakerInIOSPIP(_ data: NSDictionary,
+                                  _ resolve: RCTPromiseResolveBlock?,
+                                  _ reject: RCTPromiseRejectBlock?) {
+        guard let enabled = data["enable"] as? Bool else {
+            let errorMessage = "\(#function) Incorrect data passed for setActiveSpeakerInIOSPIP in PIP Mode"
+            reject?("6004", errorMessage, nil)
+            return
+        }
+
+        useActiveSpeakerInPIP = enabled
+        resolve?(nil)
+    }
+
     // MARK: - Helper Functions
 
     // Handle resetting states and data cleanup
@@ -2231,6 +2693,8 @@ class HMSRNSDK: HMSUpdateListener, HMSPreviewListener {
             return "SERVER_RECORDING_STATE_UPDATED"
         case .hlsRecordingStateUpdated:
             return "HLS_RECORDING_STATE_UPDATED"
+        case .transcriptionStateUpdated:
+            return "TRANSCRIPTIONS_UPDATED"
         default:
             return ""
         }
@@ -2251,6 +2715,19 @@ class HMSRNSDK: HMSUpdateListener, HMSPreviewListener {
     static private func getTimeStamp() -> String {
         "\(Date().timeIntervalSince1970)"
     }
+
+    private func getViewContentMode(_ type: String?) -> UIView.ContentMode {
+        switch type {
+        case "ASPECT_FILL":
+            return .scaleAspectFill
+        case "ASPECT_FIT":
+            return .scaleAspectFit
+        case "ASPECT_BALANCED":
+            return .center
+        default:
+            return .scaleAspectFill
+        }
+    }
 }
 
 extension UIImage {
@@ -2264,5 +2741,65 @@ extension UIImage {
         let normalizedImage = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
         return normalizedImage
+    }
+}
+
+extension HMSRNSDK: AVPictureInPictureControllerDelegate {
+
+    public func pictureInPictureControllerWillStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        print(#function)
+    }
+
+    public func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+
+        if eventsEnableStatus[HMSConstants.ON_PIP_MODE_CHANGED] != true {
+            return
+        }
+
+        self.delegate?.emitEvent(HMSConstants.ON_PIP_MODE_CHANGED,
+                                 ["event": HMSConstants.ON_PIP_MODE_CHANGED,
+                                  "id": self.id,
+                                  "isInPictureInPictureMode": true])
+    }
+
+    public func pictureInPictureControllerWillStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        print(#function)
+    }
+
+    public func pictureInPictureControllerDidStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        if eventsEnableStatus[HMSConstants.ON_PIP_MODE_CHANGED] != true {
+            return
+        }
+
+        self.delegate?.emitEvent(HMSConstants.ON_PIP_MODE_CHANGED,
+                                 ["event": HMSConstants.ON_PIP_MODE_CHANGED,
+                                  "id": self.id,
+                                  "isInPictureInPictureMode": false])
+    }
+
+    public func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, failedToStartPictureInPictureWithError error: Error) {
+        if eventsEnableStatus[HMSConstants.ON_PIP_MODE_CHANGED] != true {
+            return
+        }
+
+        self.delegate?.emitEvent(HMSConstants.ON_PIP_MODE_CHANGED,
+                                 ["event": HMSConstants.ON_PIP_MODE_CHANGED,
+                                  "id": self.id,
+                                  "isInPictureInPictureMode": false])
+    }
+
+    public func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void) {
+        print(#function)
+    }
+}
+
+extension UIView {
+    func addConstrained(subview: UIView) {
+        addSubview(subview)
+        subview.translatesAutoresizingMaskIntoConstraints = false
+        subview.topAnchor.constraint(equalTo: topAnchor).isActive = true
+        subview.leadingAnchor.constraint(equalTo: leadingAnchor).isActive = true
+        subview.trailingAnchor.constraint(equalTo: trailingAnchor).isActive = true
+        subview.bottomAnchor.constraint(equalTo: bottomAnchor).isActive = true
     }
 }

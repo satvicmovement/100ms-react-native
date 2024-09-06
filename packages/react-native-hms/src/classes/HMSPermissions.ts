@@ -1,3 +1,16 @@
+import type { TranscriptionsMode } from './transcriptions';
+
+export interface HMSWhiteboardPermission {
+  admin?: boolean;
+  write?: boolean;
+  read?: boolean;
+}
+
+export interface HMSTranscriptionPermissions {
+  admin: boolean;
+  mode?: TranscriptionsMode;
+}
+
 export class HMSPermissions {
   endRoom?: boolean;
   removeOthers?: boolean;
@@ -9,6 +22,8 @@ export class HMSPermissions {
   rtmpStreaming?: boolean;
   pollRead?: boolean;
   pollWrite?: boolean;
+  whiteboard?: HMSWhiteboardPermission;
+  transcriptions?: Array<HMSTranscriptionPermissions>;
 
   constructor(params?: {
     endRoom?: boolean;
@@ -21,6 +36,8 @@ export class HMSPermissions {
     rtmpStreaming?: boolean;
     pollRead?: boolean;
     pollWrite?: boolean;
+    whiteboard?: HMSWhiteboardPermission;
+    transcriptions?: Array<HMSTranscriptionPermissions>;
   }) {
     if (params) {
       this.endRoom = params.endRoom;
@@ -33,6 +50,8 @@ export class HMSPermissions {
       this.rtmpStreaming = params.rtmpStreaming;
       this.pollRead = params.pollRead;
       this.pollWrite = params.pollWrite;
+      this.whiteboard = params.whiteboard;
+      this.transcriptions = params.transcriptions;
     }
   }
 }

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { InteractionManager, View } from 'react-native';
+import { InteractionManager, Platform, View } from 'react-native';
 import { HMSTrack, HMSCameraControl } from '@100mslive/react-native-hms';
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -31,6 +31,7 @@ import { PreviewForRoleChangeModal } from './PreviewForRoleChangeModal';
 import { ChatAndParticipantsBottomSheet } from './ChatAndParticipants';
 import { LeaveRoomBottomSheet } from './LeaveRoomBottomSheet';
 import { EndRoomModal } from './EndRoomModal';
+import { FullScreenWhiteboard } from './FullScreenWhiteboard';
 
 type CapturedImagePath = { uri: string } | null;
 
@@ -133,7 +134,7 @@ export const DisplayView: React.FC<DisplayViewProps> = ({
         handlePeerTileMorePress={handlePeerTileMorePress}
       />
 
-      {isPipModeActive ? null : (
+      {isPipModeActive && Platform.OS === 'android' ? null : (
         <>
           <LeaveRoomBottomSheet />
 
@@ -142,6 +143,8 @@ export const DisplayView: React.FC<DisplayViewProps> = ({
           <PreviewForRoleChangeModal />
 
           <FullScreenVideoView />
+
+          <FullScreenWhiteboard />
 
           <ChatAndParticipantsBottomSheet />
 

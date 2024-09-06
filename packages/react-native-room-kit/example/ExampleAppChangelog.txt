@@ -1,18 +1,21 @@
-Board: https://100ms.atlassian.net/jira/software/projects/RN/boards/33
+Board: https://app.devrev.ai/100ms/vistas/vista-254
 
-- Captions in HLS Player
-https://100ms.atlassian.net/browse/RN-267
+- Add runtime permission flow on Android
+https://app.devrev.ai/100ms/works/ISS-22855
 
-- Header + Description from Layout API in Description Pane
-https://100ms.atlassian.net/browse/RN-273
+- Resolve app not running on Android 14 issue
+https://app.devrev.ai/100ms/works/ISS-22860
 
-- Chat Messages starting from the Top
-https://100ms.atlassian.net/browse/RN-275
+- Resolve warning about React State update
+https://app.devrev.ai/100ms/works/ISS-22807
 
-- New Chat Messages design for HLS Player
-https://100ms.atlassian.net/browse/RN-276
+- Added support for Noise Cancellation Default State
+https://app.devrev.ai/100ms/works/ISS-22853
 
-Room Kit: 1.1.7
-React Native SDK: 1.10.4
-Android SDK: 2.9.53
-iOS SDK: 1.8.0
+- Added support for Switch Role on Prebuilt
+https://app.devrev.ai/100ms/works/ISS-22863
+
+Room Kit: 1.2.2
+React Native SDK: 1.10.9
+Android SDK: 2.9.64
+iOS SDK: 1.15.0

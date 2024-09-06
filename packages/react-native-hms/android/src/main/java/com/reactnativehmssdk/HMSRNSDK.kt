@@ -20,6 +20,7 @@ import live.hms.video.sdk.models.enums.HMSPeerUpdate
 import live.hms.video.sdk.models.enums.HMSRoomUpdate
 import live.hms.video.sdk.models.enums.HMSTrackUpdate
 import live.hms.video.sdk.models.trackchangerequest.HMSChangeTrackStateRequest
+import live.hms.video.sdk.transcripts.HmsTranscripts
 import live.hms.video.sessionstore.HMSKeyChangeListener
 import live.hms.video.sessionstore.HmsSessionStore
 import live.hms.video.signal.init.*
@@ -83,6 +84,13 @@ class HMSRNSDK(
       val logSettings = HMSHelper.getLogSettings(data?.getMap("logSettings"))
       if (logSettings != null) {
         builder.setLogSettings(logSettings)
+      }
+    }
+
+    if (data?.hasKey("haltPreviewJoinForPermissionsRequest") == true) {
+      val halt = data?.getBoolean("haltPreviewJoinForPermissionsRequest")
+      if (halt != null) {
+        builder.haltPreviewJoinForPermissionsRequest(halt)
       }
     }
 
@@ -256,9 +264,11 @@ class HMSRNSDK(
             delegate.emitEvent("ON_PREVIEW", data)
           }
 
-          /*
-          override fun peerListUpdated(addedPeers: ArrayList<HMSPeer>?, removedPeers: ArrayList<HMSPeer>?) {
-
+          override fun peerListUpdated(
+            addedPeers: ArrayList<HMSPeer>?,
+            removedPeers: ArrayList<HMSPeer>?,
+          ) {
+            super.peerListUpdated(addedPeers, removedPeers)
             if (eventsEnableStatus["ON_PEER_LIST_UPDATED"] != true) {
               return
             }
@@ -278,11 +288,22 @@ class HMSRNSDK(
               }
             }
 
+            data.putString("id", id)
             data.putArray("addedPeers", addedPeersArray)
             data.putArray("removedPeers", removedPeersArray)
             delegate.emitEvent("ON_PEER_LIST_UPDATED", data)
           }
-           */
+
+          override fun onPermissionsRequested(permissions: List<String>) {
+            if (eventsEnableStatus["ON_PERMISSIONS_REQUESTED"] != true) {
+              return
+            }
+            val data: WritableMap = Arguments.createMap()
+
+            data.putArray("permissions", Arguments.fromList(permissions))
+            data.putString("id", id)
+            delegate.emitEvent("ON_PERMISSIONS_REQUESTED", data)
+          }
         },
       )
     } else {
@@ -542,6 +563,28 @@ class HMSRNSDK(
               data.putArray("addedPeers", addedPeersArray)
               data.putArray("removedPeers", removedPeersArray)
               delegate.emitEvent("ON_PEER_LIST_UPDATED", data)
+            }
+
+            override fun onTranscripts(transcripts: HmsTranscripts) {
+              if (eventsEnableStatus["ON_TRANSCRIPTS"] != true) {
+                return
+              }
+              val data: WritableMap = Arguments.createMap()
+              val transcriptsArray = HMSDecoder.getHmsTranscripts(transcripts.transcripts)
+              data.putArray("transcripts", transcriptsArray)
+              data.putString("id", id)
+              delegate.emitEvent("ON_TRANSCRIPTS", data)
+            }
+
+            override fun onPermissionsRequested(permissions: List<String>) {
+              if (eventsEnableStatus["ON_PERMISSIONS_REQUESTED"] != true) {
+                return
+              }
+              val data: WritableMap = Arguments.createMap()
+
+              data.putArray("permissions", Arguments.fromList(permissions))
+              data.putString("id", id)
+              delegate.emitEvent("ON_PERMISSIONS_REQUESTED", data)
             }
           },
         )
@@ -1426,6 +1469,7 @@ class HMSRNSDK(
 
           if (audioTrackId == trackId) {
             peer.audioTrack?.setVolume(volume)
+            callback?.resolve(null)
             return
           }
 
@@ -1435,6 +1479,7 @@ class HMSRNSDK(
 
               if (trackExtracted != null) {
                 trackExtracted.setVolume(volume)
+                callback?.resolve(null)
                 return
               }
             }
@@ -1707,7 +1752,7 @@ class HMSRNSDK(
       val audioDevice = data.getString("audioDevice")
       hmsSDK?.let {
         it.switchAudioOutput(HMSHelper.getAudioDevice(audioDevice))
-        callback?.resolve(true)
+        callback?.resolve(null)
       }
     } else {
       val errorMessage = "switchAudioOutput: $requiredKeys"
@@ -1793,15 +1838,13 @@ class HMSRNSDK(
         override fun onSuccess() {
           isAudioSharing = false
           audioshareCallback = null
-          callback?.resolve(getPromiseResolveData())
+          callback?.resolve(true)
         }
       },
     )
   }
 
-  fun getAudioMixingMode(): AudioMixingMode {
-    return audioMixingMode
-  }
+  fun getAudioMixingMode(): AudioMixingMode = audioMixingMode
 
   fun setAudioMixingMode(
     data: ReadableMap,
@@ -1813,7 +1856,7 @@ class HMSRNSDK(
       val mode = HMSHelper.getAudioMixingMode(data.getString("audioMixingMode"))
       audioMixingMode = mode
       hmsSDK?.setAudioMixingMode(mode)
-      callback?.resolve(getPromiseResolveData())
+      callback?.resolve(true)
     } else {
       val errorMessage = "setAudioMixingMode: $requiredKeys"
       rejectCallback(callback, errorMessage)
@@ -1950,6 +1993,9 @@ class HMSRNSDK(
         }
         "isLargeRoom" -> {
           data.putBoolean("isLargeRoom", hmsRoom.isLargeRoom)
+        }
+        "transcriptions" -> {
+          data.putArray("transcriptions", HMSDecoder.getTranscriptionsList(hmsRoom.transcriptions))
         }
       }
 
@@ -2589,4 +2635,52 @@ class HMSRNSDK(
       },
     )
   }
+
+  // region Webrtc Transcription
+  fun handleRealTimeTranscription(
+    data: ReadableMap,
+    promise: Promise?,
+  ) {
+    when (data.getString("action")) {
+      "start" -> startRealTimeTranscription(data, promise)
+      "stop" -> stopRealTimeTranscription(data, promise)
+    }
+  }
+
+  private fun startRealTimeTranscription(
+    data: ReadableMap,
+    promise: Promise?,
+  ) {
+    hmsSDK?.startRealTimeTranscription(
+      TranscriptionsMode.CAPTION,
+      object : HMSActionResultListener {
+        override fun onError(error: HMSException) {
+          promise?.reject(error.code.toString(), error.message)
+        }
+
+        override fun onSuccess() {
+          promise?.resolve(true)
+        }
+      },
+    )
+  }
+
+  private fun stopRealTimeTranscription(
+    data: ReadableMap,
+    promise: Promise?,
+  ) {
+    hmsSDK?.stopRealTimeTranscription(
+      TranscriptionsMode.CAPTION,
+      object : HMSActionResultListener {
+        override fun onError(error: HMSException) {
+          promise?.reject(error.code.toString(), error.message)
+        }
+
+        override fun onSuccess() {
+          promise?.resolve(true)
+        }
+      },
+    )
+  }
+  // endregion Webrtc Transcription
 }

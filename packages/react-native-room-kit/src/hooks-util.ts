@@ -1,12 +1,24 @@
+import type {
+  HMSHLSPlayer,
+  HMSPIPConfig,
+  HMSRole,
+  HMSSessionStore,
+  HMSSpeaker,
+  JsonValue,
+} from '@100mslive/react-native-hms';
 import {
+  getSoftInputMode,
   HMSChangeTrackStateRequest,
   HMSConfig,
+  HMSHLSPlayerPlaybackState,
   HMSLocalPeer,
   HMSMessage,
+  HMSMessageRecipient,
   HMSMessageRecipientType,
-  HMSPIPListenerActions,
   HMSPeer,
   HMSPeerUpdate,
+  HMSPIPListenerActions,
+  HMSPollUpdateType,
   HMSRoleChangeRequest,
   HMSRoom,
   HMSRoomUpdate,
@@ -16,27 +28,18 @@ import {
   HMSTrackType,
   HMSTrackUpdate,
   HMSUpdateListenerActions,
-  HMSMessageRecipient,
+  HMSVideoViewMode,
+  setSoftInputMode,
+  SoftInputModes,
+  TranscriptionsMode,
+  TranscriptionState,
+  useHMSHLSPlayerCue,
+  useHMSHLSPlayerPlaybackState,
   useHMSHLSPlayerResolution,
   useHmsViewsResolutionsState,
-  setSoftInputMode,
-  getSoftInputMode,
   WindowController,
-  useHMSHLSPlayerCue,
-  HMSPollUpdateType,
-  useHMSHLSPlayerPlaybackState,
-  HMSHLSPlayerPlaybackState,
 } from '@100mslive/react-native-hms';
 import type { Chat as ChatConfig } from '@100mslive/types-prebuilt/elements/chat';
-import { SoftInputModes } from '@100mslive/react-native-hms';
-import type {
-  HMSHLSPlayer,
-  HMSPIPConfig,
-  HMSRole,
-  HMSSessionStore,
-  HMSSpeaker,
-  JsonValue,
-} from '@100mslive/react-native-hms';
 import type {
   ColorPalette,
   DefaultConferencingScreen,
@@ -46,25 +49,25 @@ import type {
   Typography,
 } from '@100mslive/types-prebuilt';
 import Toast from 'react-native-simple-toast';
-import {
-  useRef,
-  useCallback,
-  useEffect,
-  useState,
-  useMemo,
-  useContext,
-} from 'react';
 import type { DependencyList } from 'react';
-
 import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+
+import type { OnLeaveHandler, PeerTrackNode } from './utils/types';
+import {
+  ChatBroadcastFilter,
   MaxTilesInOnePage,
   ModalTypes,
   OnLeaveReason,
   PeerListRefreshInterval,
   PipModes,
 } from './utils/types';
-import { ChatBroadcastFilter } from './utils/types';
-import type { OnLeaveHandler, PeerTrackNode } from './utils/types';
 import { createPeerTrackNode, parseMetadata } from './utils/functions';
 import {
   batch,
@@ -102,10 +105,10 @@ import {
   setChatState,
   setEditUsernameDisabled,
   setFullScreenPeerTrackNode,
+  setHandleBackButton,
   setHMSLocalPeerState,
   setHMSRoleState,
   setHMSRoomState,
-  setHandleBackButton,
   setIsLocalAudioMutedState,
   setIsLocalVideoMutedState,
   setLayoutConfig,
@@ -133,15 +136,15 @@ import {
   replacePeerTrackNodes,
   replacePeerTrackNodesWithTrack,
 } from './peerTrackNodeUtils';
-import { MeetingState } from './types';
 import type { ChatState, HMSPrebuiltProps, PinnedMessage } from './types';
+import { MeetingState, NotificationTypes } from './types';
+import type { ImageStyle, StyleProp, TextStyle, ViewStyle } from 'react-native';
 import {
   BackHandler,
   InteractionManager,
   Keyboard,
   Platform,
 } from 'react-native';
-import type { ImageStyle, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { NavigationContext } from '@react-navigation/native';
 import {
   useIsLandscapeOrientation,
@@ -158,7 +161,6 @@ import {
 import type { GridViewRefAttrs } from './components/GridView';
 import { getRoomLayout } from './modules/HMSManager';
 import { DEFAULT_THEME, DEFAULT_TYPOGRAPHY } from './utils/theme';
-import { NotificationTypes } from './types';
 import { KeyboardState, useSharedValue } from 'react-native-reanimated';
 import {
   useCanPublishAudio,
@@ -208,6 +210,54 @@ const useHMSRoomUpdate = (hmsInstance: HMSSDK) => {
         }
       } else if (type === HMSRoomUpdate.HLS_STREAMING_STATE_UPDATED) {
         dispatch(changeStartingHLSStream(false));
+      } else if (type === HMSRoomUpdate.TRANSCRIPTIONS_UPDATED) {
+        const captionTranscription = room.transcriptions?.find(
+          (transcription) => transcription.mode === TranscriptionsMode.CAPTION
+        );
+
+        if (captionTranscription?.state === TranscriptionState.STARTED) {
+          batch(() => {
+            dispatch(removeNotification('enable-cc'));
+            dispatch(removeNotification('TranscriptionState.STARTED'));
+            dispatch(
+              addNotification({
+                id: 'TranscriptionState.STARTED',
+                type: NotificationTypes.INFO,
+                icon: 'cc',
+                title: 'Closed Captioning enabled for everyone',
+              })
+            );
+          });
+        } else if (captionTranscription?.state === TranscriptionState.STOPPED) {
+          batch(() => {
+            dispatch(removeNotification('disable-cc'));
+            dispatch(
+              addNotification({
+                id: Math.random().toString(16).slice(2),
+                type: NotificationTypes.INFO,
+                icon: 'cc',
+                title: 'Closed Captioning disabled for everyone',
+              })
+            );
+          });
+        } else if (captionTranscription?.state === TranscriptionState.FAILED) {
+          const transcriptionError = captionTranscription.error;
+          batch(() => {
+            dispatch(removeNotification('enable-cc'));
+            dispatch(removeNotification('disable-cc'));
+            if (transcriptionError !== undefined) {
+              dispatch(
+                addNotification({
+                  id: Math.random().toString(16).slice(2),
+                  title:
+                    transcriptionError.message ||
+                    'Failed to enable/disable Closed Captions',
+                  type: NotificationTypes.ERROR,
+                })
+              );
+            }
+          });
+        }
       }
     };
 
@@ -238,6 +288,8 @@ const useHMSPeersUpdate = (
   //   (state: RootState) => state.app.meetingState === MeetingState.IN_MEETING
   // );
   const hmsActions = useHMSActions();
+
+  const isFirstRunForRoleChangeModal = useRef(true);
 
   useEffect(() => {
     const peerUpdateHandler = ({ peer, type }: PeerUpdate) => {
@@ -380,6 +432,18 @@ const useHMSPeersUpdate = (
               .catch((e) => {
                 console.log('Metadata change failed', e);
               });
+
+            if (isFirstRunForRoleChangeModal.current) {
+              isFirstRunForRoleChangeModal.current = false;
+            } else {
+              dispatch(
+                addNotification({
+                  id: Math.random().toString(16).slice(2),
+                  type: NotificationTypes.INFO,
+                  title: `You are now a ${peer.role?.name}`,
+                })
+              );
+            }
           }
         }
         return;
@@ -602,9 +666,11 @@ const useHMSTrackUpdate = (
       const miniviewPeerTrackNode = reduxState.app.miniviewPeerTrackNode;
       const localPeerTrackNode = reduxState.app.localPeerTrackNode;
 
+      const localPeerRole = reduxState.hmsStates.localPeer?.role ?? null;
+
       const currentLayoutConfig = selectLayoutConfigForRole(
         reduxState.hmsStates.layoutConfig,
-        reduxState.hmsStates.localPeer?.role ?? null
+        localPeerRole
       );
 
       const localTileInsetEnabled =
@@ -617,6 +683,26 @@ const useHMSTrackUpdate = (
         if (track.source === HMSTrackSource.SCREEN) {
           if (!peer.isLocal && track.type === HMSTrackType.VIDEO) {
             dispatch(addScreenshareTile(newPeerTrackNode));
+          }
+          if (track.type === HMSTrackType.VIDEO) {
+            const whiteboard = reduxState.hmsStates.whiteboard;
+            // If white board is open and local peer is owner, close whiteboard
+            if (
+              whiteboard &&
+              // Is local peer has whiteboard admin permission
+              !!localPeerRole?.permissions?.whiteboard?.admin &&
+              // Is local peer owner of whiteboard
+              whiteboard.isOwner
+            ) {
+              hmsInstance.interactivityCenter
+                .stopWhiteboard()
+                .then((success) => {
+                  console.log('StopWhiteboard on Screenshare: ', success);
+                })
+                .catch((error) => {
+                  console.log('StopWhiteboard error: ', error);
+                });
+            }
           }
         } else {
           setPeerTrackNodes((prevPeerTrackNodes) => {
@@ -715,6 +801,7 @@ const useHMSTrackUpdate = (
       if (type === HMSTrackUpdate.TRACK_REMOVED) {
         if (track.source === HMSTrackSource.SCREEN) {
           if (!peer.isLocal && track.type === HMSTrackType.VIDEO) {
+            hmsInstance.setActiveSpeakerInIOSPIP(true);
             const screensharePeerTrackNodes =
               reduxState.app.screensharePeerTrackNodes;
             const nodeToRemove = screensharePeerTrackNodes.find(
@@ -1521,32 +1608,50 @@ export const useHMSNetworkQualityUpdate = () => {
   }, [hmsInstance]);
 };
 
-export type PIPConfig = Omit<HMSPIPConfig, 'autoEnterPipMode'>;
+const pipConfig: HMSPIPConfig = {
+  scaleType: HMSVideoViewMode.ASPECT_FILL,
+  aspectRatio: [9, 16],
+  autoEnterPipMode: true,
+  useActiveSpeaker: true,
+  endButton: false,
+  audioButton: false,
+  videoButton: false,
+};
 
 export const useEnableAutoPip = () => {
   const hmsInstance = useHMSInstance();
 
-  const enableAutoPip = useCallback(
-    (data?: PIPConfig) => {
-      hmsInstance.setPipParams({ ...data, autoEnterPipMode: true });
+  return useCallback(
+    (data: HMSPIPConfig) => {
+      hmsInstance
+        .setPipParams({
+          ...pipConfig,
+          ...data,
+          autoEnterPipMode: true,
+        })
+        .then((r) => console.log('Enable Auto PIP: ', r))
+        .catch((e) => console.log('Enable Auto PIP Error: ', e));
     },
     [hmsInstance]
   );
-
-  return enableAutoPip;
 };
 
 export const useDisableAutoPip = () => {
   const hmsInstance = useHMSInstance();
 
-  const disableAutoPip = useCallback(
-    (data?: PIPConfig) => {
-      hmsInstance.setPipParams({ ...data, autoEnterPipMode: false });
+  return useCallback(
+    (data: HMSPIPConfig) => {
+      hmsInstance
+        .setPipParams({
+          ...pipConfig,
+          ...data,
+          autoEnterPipMode: false,
+        })
+        .then((r) => console.log('Disable Auto PIP: ', r))
+        .catch((e) => console.log('Disable Auto PIP Error: ', e));
     },
     [hmsInstance]
   );
-
-  return disableAutoPip;
 };
 
 export const useAutoPip = (oneToOneCall: boolean) => {
@@ -1565,9 +1670,14 @@ export const useAutoPip = (oneToOneCall: boolean) => {
 
   useEffect(() => {
     if (autoEnterPipMode && remotePeersPresent) {
-      enableAutoPip({ aspectRatio: [numerator, denominator] });
+      enableAutoPip({
+        scaleType: HMSVideoViewMode.ASPECT_FILL,
+        aspectRatio: [numerator, denominator],
+      });
 
-      return disableAutoPip;
+      return () => {
+        disableAutoPip({});
+      };
     }
   }, [
     remotePeersPresent,
@@ -1595,7 +1705,7 @@ export const usePipAspectRatio = (oneToOneCall: boolean): [number, number] => {
     if (isHLSViewer && hlsPlayerResolution) {
       return [hlsPlayerResolution.width, hlsPlayerResolution.height];
     }
-    // When user is hlsviewer and we don't have stream resolution
+    // When user is hlsviewer, and we don't have stream resolution
     if (isHLSViewer) {
       return [9, 16];
     }
@@ -1608,7 +1718,11 @@ export const usePipAspectRatio = (oneToOneCall: boolean): [number, number] => {
       return [9, 16];
     }
     // default aspect ratio
-    return [16, 9];
+    return Platform.select({
+      ios: [9, 16],
+      android: [16, 9],
+      default: [16, 9],
+    });
   }, [
     isHLSViewer,
     firstSSNodeId,
@@ -2089,7 +2203,7 @@ export const useFilteredParticipants = (filterText: string) => {
       const filteredList =
         Array.isArray(list) && formattedSearchText.length > 0
           ? list.filter((peer) =>
-              peer.name.toLowerCase().includes(formattedSearchText)
+              peer.name?.toLowerCase().includes(formattedSearchText)
             )
           : list;
 
@@ -2671,9 +2785,7 @@ export const useSavePropsToStore = (
   }, [handleBackButton]);
 
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      dispatch(setAutoEnterPipMode(autoEnterPipMode));
-    }
+    dispatch(setAutoEnterPipMode(autoEnterPipMode));
   }, [autoEnterPipMode]);
 };
 
@@ -3123,6 +3235,11 @@ export const useCanShowRoomOptionsButton = () => {
     return permissions?.pollRead || permissions?.pollWrite;
   });
 
+  const canStartStopWhiteboard = useSelector((state: RootState) => {
+    const permissions = state.hmsStates.localPeer?.role?.permissions;
+    return permissions?.whiteboard?.admin;
+  });
+
   const { canShowParticipants } = useShowChatAndParticipants();
 
   const canEditUsernameFromRoomModal = isViewer && !editUsernameDisabled;
@@ -3134,15 +3251,18 @@ export const useCanShowRoomOptionsButton = () => {
     canStartRecording ||
     canEditUsernameFromRoomModal ||
     canReadOrWritePoll ||
+    canStartStopWhiteboard ||
     isNoiseCancellationAvailable;
 
   return canShowOptions;
 };
 
 export const useHLSViewsConstraints = () => {
-  const hlsFullScreen = useSelector(
-    (state: RootState) => state.app.hlsFullScreen
-  );
+  const fullScreenMode = useSelector((state: RootState) => {
+    const hlsFullScreen = state.app.hlsFullScreen;
+    const isPipModeActive = state.app.pipModeStatus === PipModes.ACTIVE;
+    return hlsFullScreen || isPipModeActive;
+  });
   const isLandscapeOrientation = useIsLandscapeOrientation();
   const { width: safeAreaWidthFrame, height: safeAreaHeightFrame } =
     useSafeAreaFrame();
@@ -3153,7 +3273,7 @@ export const useHLSViewsConstraints = () => {
     right: rightInset,
   } = useSafeAreaInsets();
 
-  const playerWrapperConstraints = hlsFullScreen
+  const playerWrapperConstraints = fullScreenMode
     ? {
         width: safeAreaWidthFrame - leftInset - rightInset,
         height: isLandscapeOrientation
@@ -3188,9 +3308,11 @@ export const useHLSViewsConstraints = () => {
 };
 
 export const useHLSPlayerConstraints = () => {
-  const hlsFullScreen = useSelector(
-    (state: RootState) => state.app.hlsFullScreen
-  );
+  const fullScreenMode = useSelector((state: RootState) => {
+    const hlsFullScreen = state.app.hlsFullScreen;
+    const isPipModeActive = state.app.pipModeStatus === PipModes.ACTIVE;
+    return hlsFullScreen || isPipModeActive;
+  });
   const isLandscapeOrientation = useIsLandscapeOrientation();
 
   const resolution = useHMSHLSPlayerResolution();
@@ -3228,7 +3350,7 @@ export const useHLSPlayerConstraints = () => {
   /**
    * Handling Portrait Orientation
    */
-  if (hlsFullScreen) {
+  if (fullScreenMode) {
     return {
       width: sr > wr ? wrapperWidth : wrapperHeight * sr,
       height: sr > wr ? wrapperWidth / sr : wrapperHeight,

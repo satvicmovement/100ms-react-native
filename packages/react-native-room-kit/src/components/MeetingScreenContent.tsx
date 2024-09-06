@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { StyleSheet, View, Keyboard } from 'react-native';
+import { StyleSheet, View, Keyboard, Platform } from 'react-native';
 import { useSelector } from 'react-redux';
 import {
   Easing,
@@ -17,10 +17,11 @@ import type { RootState } from '../redux';
 import { Footer } from './Footer';
 import { DisplayView } from './DisplayView';
 import { Header } from './Header';
-import { useKeyboardState } from '../hooks-util';
+import { useHMSLayoutConfig, useKeyboardState } from '../hooks-util';
 import { HMSStatusBar } from './StatusBar';
 import { AnimatedFooter } from './AnimatedFooter';
 import { AnimatedHeader } from './AnimatedHeader';
+import { useIsLandscapeOrientation } from '../utils/dimension';
 // import { ReconnectionView } from './ReconnectionView';
 
 interface MeetingScreenContentProps {
@@ -33,9 +34,15 @@ export const MeetingScreenContent: React.FC<MeetingScreenContentProps> = ({
   const offset = useSharedValue(1);
   const timerIdRef = useRef<NodeJS.Timeout | null>(null);
   const [controlsHidden, setControlsHidden] = useState(false);
+  const isLandscapeOrientation = useIsLandscapeOrientation();
+  const prevIsLandscapeOrientation = useRef(isLandscapeOrientation);
   const isPipModeActive = useSelector(
     (state: RootState) => state.app.pipModeStatus === PipModes.ACTIVE
   );
+  const whiteboardActive =
+    Platform.OS === 'android'
+      ? useSelector((state: RootState) => !!state.hmsStates.whiteboard)
+      : null;
   const { keyboardState } = useKeyboardState();
 
   const dismissKeyboard = useCallback(() => {
@@ -75,9 +82,48 @@ export const MeetingScreenContent: React.FC<MeetingScreenContentProps> = ({
     [dismissKeyboard, clearTimer]
   );
 
+  if (
+    !!whiteboardActive &&
+    (isLandscapeOrientation ? offset.value === 1 : offset.value < 1)
+  ) {
+    cancelAnimation(offset);
+    offset.value = withTiming(
+      isLandscapeOrientation ? 0 : 1,
+      { duration: 200, easing: Easing.ease },
+      (finished) => {
+        if (finished) {
+          runOnJS(setControlsHidden)(offset.value === 0);
+        }
+      }
+    );
+  }
+
+  //#region Hiding Header & Footer when user switches from Portrait to Landscape
+  if (
+    prevIsLandscapeOrientation.current === false &&
+    isLandscapeOrientation &&
+    offset.value === 1
+  ) {
+    cancelAnimation(offset);
+    offset.value = withTiming(
+      0,
+      { duration: 200, easing: Easing.ease },
+      (finished) => {
+        if (finished) {
+          runOnJS(setControlsHidden)(offset.value === 0);
+        }
+      }
+    );
+  }
+  prevIsLandscapeOrientation.current = isLandscapeOrientation;
+  //#endregion
+
   // Handles Auto hiding the controls for the first time
   // to make this feature discoverable
   useEffect(() => {
+    if (!!whiteboardActive) {
+      return;
+    }
     clearTimer();
     timerIdRef.current = setTimeout(() => {
       timerIdRef.current = null;
@@ -85,11 +131,32 @@ export const MeetingScreenContent: React.FC<MeetingScreenContentProps> = ({
     }, HeaderFooterHideDelayMs);
 
     return clearTimer;
-  }, [clearTimer, toggleControls]);
+  }, [clearTimer, toggleControls, !!whiteboardActive]);
 
   const tapGesture = Gesture.Tap()
+    .enabled(Platform.select({ android: !whiteboardActive, default: true }))
     .onEnd(() => toggleControls())
     .requireExternalGestureToFail();
+
+  const enabledByDefault = useHMSLayoutConfig((layoutConfig) => {
+    return (
+      layoutConfig?.screens?.preview?.default?.elements?.noise_cancellation
+        ?.enabled_by_default || false
+    );
+  });
+
+  const shouldEnableNoiseCancellation =
+    Platform.OS === 'ios' && enabledByDefault;
+
+  const noiseCancellationPlugin = useSelector(
+    (state: RootState) => state.hmsStates.noiseCancellationPlugin
+  );
+
+  React.useEffect(() => {
+    if (shouldEnableNoiseCancellation) {
+      noiseCancellationPlugin?.enable();
+    }
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -97,7 +164,7 @@ export const MeetingScreenContent: React.FC<MeetingScreenContentProps> = ({
 
       <GestureDetector gesture={tapGesture}>
         <View collapsable={false} style={styles.container}>
-          {isPipModeActive ? null : (
+          {isPipModeActive && Platform.OS === 'android' ? null : (
             <AnimatedHeader offset={offset}>
               <Header />
             </AnimatedHeader>
@@ -105,7 +172,7 @@ export const MeetingScreenContent: React.FC<MeetingScreenContentProps> = ({
 
           <DisplayView offset={offset} peerTrackNodes={peerTrackNodes} />
 
-          {isPipModeActive ? null : (
+          {isPipModeActive && Platform.OS === 'android' ? null : (
             <AnimatedFooter offset={offset}>
               <Footer />
             </AnimatedFooter>

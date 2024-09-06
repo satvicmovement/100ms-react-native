@@ -14,7 +14,9 @@ import type {
   HMSSDK,
   HMSSessionStore,
   HMSSpeaker,
+  HMSWhiteboard,
 } from '@100mslive/react-native-hms';
+import type { HMSVirtualBackgroundPlugin } from '../../modules/videoPluginWrapper';
 import type { Layout } from '@100mslive/types-prebuilt';
 
 import type {
@@ -285,6 +287,11 @@ export const setFullScreenPeerTrackNode = (
   payload: { fullScreenPeerTrackNode },
 });
 
+export const setFullScreenWhiteboard = (fullScreenWhiteboard: boolean) => ({
+  type: actionTypes.SET_FULLSCREEN_WHITEBOARD,
+  payload: { fullScreenWhiteboard },
+});
+
 export const updateFullScreenPeerTrackNode = (
   data: Partial<Omit<PeerTrackNode, 'id'>>
 ) => ({
@@ -439,6 +446,16 @@ export const setNoiseCancellationPlugin = (
   noiseCancellationPlugin,
 });
 
+export const setVideoPlugin = (videoPlugin: HMSVirtualBackgroundPlugin) => ({
+  type: HmsStateActionTypes.SET_VIDEO_PLUGIN,
+  videoPlugin,
+});
+
+export const setWhiteboard = (whiteboard: HMSWhiteboard | null) => ({
+  type: HmsStateActionTypes.SET_WHITEBOARD,
+  whiteboard,
+});
+
 export const setHandleBackButton = (handleBackButton?: boolean) => ({
   type: actionTypes.SET_HANDLE_BACK_BUTTON,
   payload: { handleBackButton },
@@ -494,6 +511,16 @@ export const setAndroidHLSStreamPaused = (paused: boolean) => ({
 export const setSMChatEnabled = (chatenabled: boolean) => ({
   type: actionTypes.SET_SM_CHAT_ENABLED,
   payload: { chatenabled },
+});
+
+export const setSelectedVirtualBackground = (vb: string | null) => ({
+  type: actionTypes.SET_SELECTED_VIRTUAL_BG,
+  payload: { selectedVirtualBackground: vb },
+});
+
+export const setShowClosedCaptions = (showClosedCaptions: boolean) => ({
+  type: actionTypes.SET_SHOW_CLOSED_CAPTIONS,
+  payload: { showClosedCaptions },
 });
 
 /**

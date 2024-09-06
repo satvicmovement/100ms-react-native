@@ -2,26 +2,33 @@ import * as React from 'react';
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import type { TouchableOpacityProps } from 'react-native';
 import type { HMSAudioMixingMode } from '@100mslive/react-native-hms';
-import { HMSRecordingState } from '@100mslive/react-native-hms';
-import { useSelector } from 'react-redux';
+import {
+  HMSRecordingState,
+  TranscriptionState,
+  TranscriptionsMode,
+} from '@100mslive/react-native-hms';
+import { useDispatch, useSelector } from 'react-redux';
 
 import type { RootState } from '../redux';
 import { ModalTypes } from '../utils/types';
 import { groupIntoTriplets, parseMetadata } from '../utils/functions';
 import {
   BRBIcon,
+  CCIcon,
   HandIcon,
   ParticipantsIcon,
   PencilIcon,
   PollVoteIcon,
   RecordingIcon,
   ScreenShareIcon,
+  VirtualBackgroundIcon,
   WaveIcon,
 } from '../Icons';
 import { BottomSheet, useBottomSheetActions } from './BottomSheet';
 import {
   isPublishingAllowed,
   useHMSConferencingScreenConfig,
+  useHMSInstance,
   useHMSLayoutConfig,
   useHMSRoomColorPalette,
   useHMSRoomStyleSheet,
@@ -31,6 +38,7 @@ import {
 import {
   useCanPublishAudio,
   useCanPublishScreen,
+  useCanPublishVideo,
   useHMSActions,
   useIsAnyStreamingOn,
 } from '../hooks-sdk';
@@ -38,6 +46,8 @@ import { RoomSettingsModalDebugModeContent } from './RoomSettingsModalDebugModeC
 import { ParticipantsCount } from './ParticipantsCount';
 import { selectAllowedTracksToPublish } from '../hooks-sdk-selectors';
 import { TestIds } from '../utils/constants';
+import { addNotification, setShowClosedCaptions } from '../redux/actions';
+import { NotificationTypes } from '../types';
 
 interface RoomSettingsModalContentProps {
   newAudioMixingMode: HMSAudioMixingMode;
@@ -56,6 +66,8 @@ export const RoomSettingsModalContent: React.FC<
 > = (props) => {
   const { closeRoomSettingsModal, setModalVisible } = props;
 
+  const hmsInstance = useHMSInstance();
+  const dispatch = useDispatch();
   const debugMode = useSelector((state: RootState) => state.user.debugMode);
 
   const hmsActions = useHMSActions();
@@ -74,6 +86,10 @@ export const RoomSettingsModalContent: React.FC<
   const canReadOrWritePoll = useSelector((state: RootState) => {
     const permissions = state.hmsStates.localPeer?.role?.permissions;
     return permissions?.pollRead || permissions?.pollWrite;
+  });
+
+  const whiteboardAdminPermission = useSelector((state: RootState) => {
+    return !!state.hmsStates.localPeer?.role?.permissions?.whiteboard?.admin;
   });
 
   const { registerOnModalHideAction } = useBottomSheetActions();
@@ -236,7 +252,7 @@ export const RoomSettingsModalContent: React.FC<
   }, [noiseCancellationPlugin]);
 
   const handleNoiseCancellation = () => {
-    // Register callback to be called when bottom sheet is hiddden
+    // Register callback to be called when bottom sheet is hidden
     registerOnModalHideAction(() => {
       if (!noiseCancellationPlugin || !isNoiseCancellationAvailable) return;
 
@@ -245,6 +261,69 @@ export const RoomSettingsModalContent: React.FC<
       } else {
         noiseCancellationPlugin.enable();
       }
+    });
+
+    // Close the current bottom sheet
+    closeRoomSettingsModal();
+  };
+  // #endregion
+
+  // #region Virtual Background
+  const canPublishVideo = useCanPublishVideo();
+  const videoPlugin = useSelector(
+    (state: RootState) => state.hmsStates.videoPlugin
+  );
+  const isLocalVideoMuted = useSelector(
+    (state: RootState) => state.hmsStates.isLocalVideoMuted
+  );
+  const virtualBackgroundApplied = useSelector(
+    (state: RootState) => state.app.selectedVirtualBackground !== null
+  );
+  const handleVirtualBackground = () => {
+    // Register callback to be called when bottom sheet is hiddden
+    registerOnModalHideAction(() => {
+      if (!videoPlugin || isLocalVideoMuted) return;
+      setModalVisible(ModalTypes.VIRTUAL_BACKGROUND);
+    });
+    // Close the current bottom sheet
+    closeRoomSettingsModal();
+  };
+  // #endregion
+
+  // #region Closed Captions
+  const isCCAdmin = useSelector((state: RootState) => {
+    const captionPermission =
+      state.hmsStates.localPeer?.role?.permissions?.transcriptions?.find(
+        (element) => element.mode === TranscriptionsMode.CAPTION
+      );
+    return captionPermission?.admin || false;
+  });
+
+  const ccEnabledForEveryone = useSelector((state: RootState) => {
+    const captionTranscription = state.hmsStates.room?.transcriptions?.find(
+      (transcription) => transcription.mode === TranscriptionsMode.CAPTION
+    );
+
+    return captionTranscription
+      ? captionTranscription.state === TranscriptionState.STARTED
+      : false;
+  });
+
+  const ccEnabledForSelf = useSelector(
+    (state: RootState) => state.app.showClosedCaptions
+  );
+
+  const handleCCForSelf = () => {
+    dispatch(setShowClosedCaptions(!ccEnabledForSelf));
+
+    // Close the current bottom sheet
+    closeRoomSettingsModal();
+  };
+
+  const handleCCForEveryone = () => {
+    // Register callback to be called when bottom sheet is hiddden
+    registerOnModalHideAction(() => {
+      setModalVisible(ModalTypes.CLOSED_CAPTIONS_CONTROL);
     });
 
     // Close the current bottom sheet
@@ -266,6 +345,61 @@ export const RoomSettingsModalContent: React.FC<
     registerOnModalHideAction(() => {
       setModalVisible(ModalTypes.POLLS_AND_QUIZZES);
     });
+
+    // Close the current bottom sheet
+    closeRoomSettingsModal();
+  };
+
+  const whiteboard = useSelector(
+    (state: RootState) => state.hmsStates.whiteboard
+  );
+  const screenShareNodesAvailable = useSelector(
+    (state: RootState) => state.app.screensharePeerTrackNodes.length > 0
+  );
+
+  const toggleWhiteboard = async () => {
+    if (!whiteboardAdminPermission) return;
+
+    if (whiteboard && whiteboard.isOwner) {
+      hmsInstance.interactivityCenter
+        .stopWhiteboard()
+        .then((success) => {
+          console.log('#stopWhiteboard stopped whiteboard ', success);
+        })
+        .catch((error) => {
+          console.log('#stopWhiteboard error ', error);
+        });
+    } else if (whiteboard && !whiteboard.isOwner) {
+      const uid = Math.random().toString(16).slice(2);
+      dispatch(
+        addNotification({
+          id: uid,
+          type: NotificationTypes.ERROR,
+          title:
+            'Only the peer who started the whiteboard has the ability to close it!',
+        })
+      );
+    } else if (isLocalScreenShared || screenShareNodesAvailable) {
+      const uid = Math.random().toString(16).slice(2);
+      dispatch(
+        addNotification({
+          id: uid,
+          type: NotificationTypes.ERROR,
+          title: isLocalScreenShared
+            ? 'Discontinue screenshare to open the whiteboard!'
+            : "Can't open whiteboard while screenshare is happening!",
+        })
+      );
+    } else {
+      hmsInstance.interactivityCenter
+        .startWhiteboard('Interactive Session')
+        .then((success) => {
+          console.log('#startWhiteboard started whiteboard ', success);
+        })
+        .catch((error) => {
+          console.log('#startWhiteboard error ', error);
+        });
+    }
 
     // Close the current bottom sheet
     closeRoomSettingsModal();
@@ -395,6 +529,17 @@ export const RoomSettingsModalContent: React.FC<
               hide: !canReadOrWritePoll,
             },
             {
+              id: 'whiteboard',
+              icon: (
+                <PencilIcon type="board" style={{ width: 20, height: 20 }} />
+              ),
+              label: whiteboard ? 'Close Whiteboard' : 'Open Whiteboard',
+              pressHandler: toggleWhiteboard,
+              isActive: !!whiteboard && whiteboard.isOwner,
+              disabled: !!whiteboard && !whiteboard.isOwner,
+              hide: !whiteboardAdminPermission,
+            },
+            {
               id: 'noise-cancellation',
               icon: <WaveIcon style={{ width: 20, height: 20 }} />,
               label: isNoiseCancellationEnabled
@@ -404,6 +549,28 @@ export const RoomSettingsModalContent: React.FC<
               isActive: isNoiseCancellationEnabled,
               hide: !showNoiseCancellationButton,
               disabled: isLocalAudioMuted,
+            },
+            {
+              id: 'virtual-background',
+              icon: <VirtualBackgroundIcon style={{ width: 20, height: 20 }} />,
+              label: 'Virtual Background',
+              pressHandler: handleVirtualBackground,
+              isActive: virtualBackgroundApplied,
+              hide: !videoPlugin || !canPublishVideo,
+              disabled: isLocalVideoMuted,
+            },
+            {
+              id: 'closed-captions',
+              icon: <CCIcon style={{ width: 20, height: 20 }} />,
+              label: isCCAdmin
+                ? 'Closed Captions'
+                : ccEnabledForSelf
+                  ? 'Hide Captions'
+                  : 'Show Captions',
+              pressHandler: isCCAdmin ? handleCCForEveryone : handleCCForSelf,
+              isActive: !isCCAdmin && ccEnabledForSelf,
+              hide: !isCCAdmin && !ccEnabledForEveryone,
+              disabled: false,
             },
           ].filter((itm) => !itm.hide),
           true
@@ -458,7 +625,7 @@ type SettingItemProps = {
   onPress(): void;
   disabled?: TouchableOpacityProps['disabled'];
   testID?: TouchableOpacityProps['testID'];
-  isActive?: boolean;
+  isActive?: boolean | null;
 };
 
 const SettingItem: React.FC<SettingItemProps> = ({

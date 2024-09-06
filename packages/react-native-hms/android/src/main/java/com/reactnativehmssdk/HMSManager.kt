@@ -21,11 +21,14 @@ import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.reactnativehmssdk.HMSManager.Companion.REACT_CLASS
 import live.hms.video.error.HMSException
 import live.hms.video.factories.noisecancellation.AvailabilityStatus
+import live.hms.video.sdk.HMSActionResultListener
 import java.util.UUID
 
 @ReactModule(name = REACT_CLASS)
-class HMSManager(reactContext: ReactApplicationContext) :
-  ReactContextBaseJavaModule(reactContext), Application.ActivityLifecycleCallbacks {
+class HMSManager(
+  reactContext: ReactApplicationContext,
+) : ReactContextBaseJavaModule(reactContext),
+  Application.ActivityLifecycleCallbacks {
   companion object {
     const val REACT_CLASS = "HMSManager"
     var hmsCollection = mutableMapOf<String, HMSRNSDK>()
@@ -78,13 +81,9 @@ class HMSManager(reactContext: ReactApplicationContext) :
     }
   }
 
-  override fun getName(): String {
-    return "HMSManager"
-  }
+  override fun getName(): String = "HMSManager"
 
-  fun getHmsInstance(): MutableMap<String, HMSRNSDK> {
-    return hmsCollection
-  }
+  fun getHmsInstance(): MutableMap<String, HMSRNSDK> = hmsCollection
 
   private fun setupPip() {
     if (emitter == null) {
@@ -957,7 +956,8 @@ class HMSManager(reactContext: ReactApplicationContext) :
         if (config.showEndButton) {
           pipRemoteActionsList.add(
             android.app.RemoteAction(
-              android.graphics.drawable.Icon.createWithResource(reactApplicationContext, R.drawable.ic_call_end_24),
+              android.graphics.drawable.Icon
+                .createWithResource(reactApplicationContext, R.drawable.ic_call_end_24),
               PipActionReceiver.PIPActions.endMeet.title,
               PipActionReceiver.PIPActions.endMeet.description,
               PendingIntent.getBroadcast(
@@ -1093,7 +1093,7 @@ class HMSManager(reactContext: ReactApplicationContext) :
       activity.setPictureInPictureParams(pipParams)
       return true
     } catch (e: Exception) {
-      throw e
+      return false
     }
   }
 
@@ -1128,7 +1128,7 @@ class HMSManager(reactContext: ReactApplicationContext) :
 
       return activity.enterPictureInPictureMode(pipParams)
     } catch (e: Exception) {
-      throw e
+      return false
     }
   }
 
@@ -1458,6 +1458,44 @@ class HMSManager(reactContext: ReactApplicationContext) :
   }
   // endregion
 
+  //region Whiteboard
+  @ReactMethod
+  fun startWhiteboard(
+    data: ReadableMap,
+    promise: Promise?,
+  ) {
+    val rnSDK = HMSHelper.getHms(data, hmsCollection)
+    rnSDK?.let { sdk ->
+      sdk.interactivityCenter?.let { center ->
+        center.startWhiteboard(data, promise)
+        return
+      }
+    }
+    promise?.reject(
+      "6004",
+      "HMS SDK not initialized",
+    )
+  }
+
+  @ReactMethod
+  fun stopWhiteboard(
+    data: ReadableMap,
+    promise: Promise?,
+  ) {
+    val rnSDK = HMSHelper.getHms(data, hmsCollection)
+    rnSDK?.let { sdk ->
+      sdk.interactivityCenter?.let { center ->
+        center.stopWhiteboard(promise)
+        return
+      }
+    }
+    promise?.reject(
+      "6004",
+      "HMS SDK not initialized",
+    )
+  }
+  //endregion
+
   // region Noise Cancellation Plugin
   @ReactMethod
   fun enableNoiseCancellationPlugin(
@@ -1480,8 +1518,19 @@ class HMSManager(reactContext: ReactApplicationContext) :
         )
         return
       }
-    hmsSdk.setNoiseCancellationEnabled(true)
-    promise?.resolve(true)
+
+    hmsSdk.enableNoiseCancellation(
+      true,
+      object : HMSActionResultListener {
+        override fun onError(error: HMSException) {
+          promise?.reject(error.code.toString(), error.message)
+        }
+
+        override fun onSuccess() {
+          promise?.resolve(true)
+        }
+      },
+    )
   }
 
   @ReactMethod
@@ -1505,8 +1554,18 @@ class HMSManager(reactContext: ReactApplicationContext) :
         )
         return
       }
-    hmsSdk.setNoiseCancellationEnabled(false)
-    promise?.resolve(true)
+    hmsSdk.enableNoiseCancellation(
+      false,
+      object : HMSActionResultListener {
+        override fun onError(error: HMSException) {
+          promise?.reject(error.code.toString(), error.message)
+        }
+
+        override fun onSuccess() {
+          promise?.resolve(true)
+        }
+      },
+    )
   }
 
   @ReactMethod
@@ -1530,7 +1589,7 @@ class HMSManager(reactContext: ReactApplicationContext) :
         )
         return
       }
-    val isEnabled = hmsSdk.getNoiseCancellationEnabled()
+    val isEnabled = hmsSdk.isNoiseCancellationEnabled()
     promise?.resolve(isEnabled)
   }
 
@@ -1556,7 +1615,7 @@ class HMSManager(reactContext: ReactApplicationContext) :
         return
       }
 
-    val availability: AvailabilityStatus = hmsSdk.isNoiseCancellationAvailable()
+    val availability: AvailabilityStatus = hmsSdk.isNoiseCancellationSupported()
     val isAvailable =
       if (availability == AvailabilityStatus.Available) {
         true
@@ -1566,6 +1625,55 @@ class HMSManager(reactContext: ReactApplicationContext) :
         false
       }
     promise?.resolve(isAvailable)
+  }
+  // endregion
+
+  // region Webrtc Transcriptions
+  @ReactMethod
+  fun handleRealTimeTranscription(
+    data: ReadableMap,
+    promise: Promise?,
+  ) {
+    val rnSDK =
+      HMSHelper.getHms(data, hmsCollection) ?: run {
+        promise?.reject(
+          "6004",
+          "RN HMS SDK not initialized",
+        )
+        return
+      }
+    rnSDK.handleRealTimeTranscription(data, promise)
+  }
+  // endregion
+
+  @ReactMethod
+  fun setPermissionsAccepted(
+    data: ReadableMap,
+    promise: Promise?,
+  ) {
+    val rnSDK =
+      HMSHelper.getHms(data, hmsCollection) ?: run {
+        promise?.reject(
+          "6004",
+          "RN HMS SDK not initialized",
+        )
+        return
+      }
+    rnSDK.hmsSDK?.setPermissionsAccepted()
+    promise?.resolve(null)
+  }
+
+  // region Warning on JS side
+  @ReactMethod
+  fun addListener(eventName: String) {
+    // Keep: Required for RN built in Event Emitter Calls.
+    // Fixes Warning - `new NativeEventEmitter()` was called with a non-null argument without the required `addListener` method.
+  }
+
+  @ReactMethod
+  fun removeListeners(count: Int) {
+    // Keep: Required for RN built in Event Emitter Calls.
+    // Fixes Warning - `new NativeEventEmitter()` was called with a non-null argument without the required `removeListeners` method.
   }
   // endregion
 

@@ -24,7 +24,8 @@ import { OverlayContainer } from './OverlayContainer';
 import { OverlayedViews } from './OverlayedViews';
 import { useFooterHeight } from './Footer';
 import { useHeaderHeight } from './Header';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
+import { WebrtcTranscriptOverlayView } from './WebrtcTranscriptOverlayView';
 
 interface WebrtcViewProps {
   offset: SharedValue<number>;
@@ -49,8 +50,10 @@ export const WebrtcView = React.forwardRef<GridViewRefAttrs, WebrtcViewProps>(
       (state: RootState) => state.user.spotlightTrackId
     );
 
-    const screenshareTilesAvailable = useSelector(
-      (state: RootState) => state.app.screensharePeerTrackNodes.length > 0
+    const screenshareTilesOrWhiteboardAcive = useSelector(
+      (state: RootState) =>
+        state.app.screensharePeerTrackNodes.length > 0 ||
+        !!state.hmsStates.whiteboard
     );
 
     const pairedPeers = useMemo(
@@ -58,13 +61,18 @@ export const WebrtcView = React.forwardRef<GridViewRefAttrs, WebrtcViewProps>(
         pairData(
           peerTrackNodes,
           isPortrait
-            ? screenshareTilesAvailable
+            ? screenshareTilesOrWhiteboardAcive
               ? MaxTilesInOnePage.IN_PORTRAIT_WITH_SCREENSHARES
               : MaxTilesInOnePage.IN_PORTRAIT
             : MaxTilesInOnePage.IN_LANDSCAPE,
           spotlightTrackId
         ),
-      [peerTrackNodes, screenshareTilesAvailable, spotlightTrackId, isPortrait]
+      [
+        peerTrackNodes,
+        screenshareTilesOrWhiteboardAcive,
+        spotlightTrackId,
+        isPortrait,
+      ]
     );
 
     const showWelcomeBanner = useSelector(
@@ -103,7 +111,7 @@ export const WebrtcView = React.forwardRef<GridViewRefAttrs, WebrtcViewProps>(
       };
     }, [isPortrait, bottom]);
 
-    if (isPipModeActive) {
+    if (isPipModeActive && Platform.OS === 'android') {
       return (
         <PIPView
           peerTrackNodes={peerTrackNodes}
@@ -137,6 +145,8 @@ export const WebrtcView = React.forwardRef<GridViewRefAttrs, WebrtcViewProps>(
                 onMoreOptionsPress={handlePeerTileMorePress}
               />
             )}
+
+            <WebrtcTranscriptOverlayView offset={offset} />
 
             <OverlayedViews
               animatedStyle={overlayedAnimatedStyles}
