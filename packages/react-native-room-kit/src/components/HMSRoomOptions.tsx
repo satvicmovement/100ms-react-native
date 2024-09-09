@@ -22,7 +22,7 @@ import { BottomSheet } from './BottomSheet';
 import { ChangeNameModalContent } from './ChangeNameModalContent';
 //import { StopRecordingModalContent } from './StopRecordingModalContent';
 import { TestIds } from '../utils/constants';
-import { PollsAndQuizBottomSheet } from './PollsAndQuizBottomSheet';
+//import { PollsAndQuizBottomSheet } from './PollsAndQuizBottomSheet';
 import { VirtualBackgroundBottomSheet } from './VirtualBackgroundBottomSheet';
 import { CaptionsModalContent } from './CaptionsModalContent';
 
