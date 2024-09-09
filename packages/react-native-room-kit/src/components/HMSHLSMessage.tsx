@@ -15,7 +15,6 @@ import { PinIcon, ThreeDotsIcon } from '../Icons';
 import { setSelectedMessageForAction } from '../redux/actions';
 import { ModalTypes } from '../utils/types';
 import type { RootState } from '../redux';
-import { splitLinksAndContent } from '../utils/functions';
 
 interface HMSHLSMessageProps {
   message: HMSMessage;
@@ -104,13 +103,6 @@ const _HMSHLSMessage: React.FC<HMSHLSMessageProps> = ({ message }) => {
   };
 
   const canTakeAction = false;
-
-  const handleLinkPress = async (url: string) => {
-    const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
-      await Linking.openURL(url);
-    }
-  };
 
   return (
     <View style={styles.container}>
