@@ -125,7 +125,7 @@ const _HMSHLSMessage: React.FC<HMSHLSMessageProps> = ({ message }) => {
               ? messageSender.isLocal
                 ? 'You'
                 : messageSender.name
-              : 'Anonymous'}
+              : 'Satvic Movement'}
             {'   '}
           </Text>
           {_splitLinksAndContent(message.message, {

@@ -119,7 +119,7 @@ const _HMSOverlayMessageView: React.FC<HMSMessageProps> = ({ message }) => {
             ? messageSender.isLocal
               ? 'You'
               : messageSender.name
-            : 'Anonymous'}
+            : 'Satvic Movement'}
         </Text>
 
         {canTakeAction ? (

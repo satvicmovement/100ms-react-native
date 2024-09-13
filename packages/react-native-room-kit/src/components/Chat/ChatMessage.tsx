@@ -119,7 +119,7 @@ const _ChatMessage: React.FC<HMSHLSMessageProps> = ({ message }) => {
             ? messageSender.isLocal
               ? 'You'
               : messageSender.name
-            : 'Anonymous'}
+            : 'Satvic Movement'}
         </Text>
 
         <Text style={[styles.time, hmsRoomStyles.time]}>
