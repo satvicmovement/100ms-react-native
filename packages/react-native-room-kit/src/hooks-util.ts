@@ -18,6 +18,7 @@ import {
   HMSPeer,
   HMSPeerUpdate,
   HMSPIPListenerActions,
+  HMSPollType,
   HMSPollUpdateType,
   HMSRoleChangeRequest,
   HMSRoom,
@@ -1445,6 +1446,48 @@ export const useHMSMessages = () => {
           !message.sender?.peerID
         ) {
           dispatch(setSMChatEnabled(true));
+        } else if (
+          //Starting poll#!#{"title":"some title","pqid":"some poll or quiz id"}
+          message.message.includes('Starting poll') &&
+          !message.sender?.name &&
+          !message.sender?.peerID
+        ) {
+          let pollinfo: { title?: string; pqid: string } = JSON.parse(
+            message.message.split('#!#').at(-1) ?? '{}'
+          );
+          if (pollinfo.pqid) {
+            hmsInstance.interactivityCenter
+              .startPoll({
+                pollId: pollinfo.pqid,
+                title: pollinfo.title ?? '',
+                type: HMSPollType.poll,
+              })
+              .then((result) => {
+                console.log('smStartPoll result > ', result);
+              });
+          }
+          message.message = 'Starting poll';
+        } else if (
+          message.message.includes('Starting quiz') &&
+          !message.sender?.name &&
+          !message.sender?.peerID
+        ) {
+          //Starting quiz#!#{"title":"some title","pqid":"some poll or quiz id"}
+          let quizinfo: { title?: string; pqid: string } = JSON.parse(
+            message.message.split('#!#').at(-1) ?? '{}'
+          );
+          if (quizinfo.pqid) {
+            hmsInstance.interactivityCenter
+              .startPoll({
+                pollId: quizinfo.pqid,
+                title: quizinfo.title ?? '',
+                type: HMSPollType.quiz,
+              })
+              .then((result) => {
+                console.log('smStartQuiz result > ', result);
+              });
+          }
+          message.message = 'Starting quiz';
         }
         dispatch(addMessage(message));
       }
