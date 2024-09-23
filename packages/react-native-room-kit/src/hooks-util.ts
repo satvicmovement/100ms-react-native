@@ -18,7 +18,6 @@ import {
   HMSPeer,
   HMSPeerUpdate,
   HMSPIPListenerActions,
-  HMSPollType,
   HMSPollUpdateType,
   HMSRoleChangeRequest,
   HMSRoom,
@@ -1452,16 +1451,13 @@ export const useHMSMessages = () => {
           !message.sender?.name &&
           !message.sender?.peerID
         ) {
-          let pollinfo: { title?: string; pqid: string } = JSON.parse(
+          console.log('smStartPoll msg > ', message.message);
+          let pollinfo = JSON.parse(
             message.message.split('#!#').at(-1) ?? '{}'
           );
-          if (pollinfo.pqid) {
+          if (pollinfo && Object.keys(pollinfo).length > 0) {
             hmsInstance.interactivityCenter
-              .startPoll({
-                pollId: pollinfo.pqid,
-                title: pollinfo.title ?? '',
-                type: HMSPollType.poll,
-              })
+              .startPoll(pollinfo)
               .then((result) => {
                 console.log('smStartPoll result > ', result);
               });
@@ -1473,16 +1469,13 @@ export const useHMSMessages = () => {
           !message.sender?.peerID
         ) {
           //Starting quiz#!#{"title":"some title","pqid":"some poll or quiz id"}
-          let quizinfo: { title?: string; pqid: string } = JSON.parse(
+          console.log('smStartQuiz msg > ', message.message);
+          let quizinfo = JSON.parse(
             message.message.split('#!#').at(-1) ?? '{}'
           );
-          if (quizinfo.pqid) {
+          if (quizinfo && Object.keys(quizinfo).length > 0) {
             hmsInstance.interactivityCenter
-              .startPoll({
-                pollId: quizinfo.pqid,
-                title: quizinfo.title ?? '',
-                type: HMSPollType.quiz,
-              })
+              .startPoll(quizinfo)
               .then((result) => {
                 console.log('smStartQuiz result > ', result);
               });
