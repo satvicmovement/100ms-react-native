@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useSelector } from 'react-redux';
 
-import { CreatePoll } from './CreatePoll';
+//import { CreatePoll } from './CreatePoll';
 import { PreviousPollsAndQuizzesList } from './PreviousPollsAndQuizzesList';
 import type { RootState } from '../redux';
 import { BottomSheet } from './BottomSheet';
@@ -69,7 +69,7 @@ export const PollsConfigAndList: React.FC<PollsConfigAndListProps> = ({
 
       {/* Content */}
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-        {canCreateOrEndPoll ? <CreatePoll /> : null}
+        {/* {canCreateOrEndPoll ? <CreatePoll /> : null} //sm modified */}
         {canVoteOnPoll || canCreateOrEndPoll ? (
           <PreviousPollsAndQuizzesList />
         ) : null}

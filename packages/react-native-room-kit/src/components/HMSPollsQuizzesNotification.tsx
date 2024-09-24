@@ -3,7 +3,7 @@ import { batch, useDispatch } from 'react-redux';
 import { StyleSheet, Text, TouchableHighlight } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import type { HMSPoll } from '@100mslive/react-native-hms';
-import { HMSPollType, HMSPollUpdateType } from '@100mslive/react-native-hms';
+import { HMSPollType } from '@100mslive/react-native-hms';
 
 import { PollVoteIcon } from '../Icons';
 import {
@@ -28,9 +28,8 @@ export interface HMSPollsQuizzesNotificationProps {
 export const HMSPollsQuizzesNotification: React.FC<
   HMSPollsQuizzesNotificationProps
 > = ({ id, payload }) => {
-  const { poll, pollUpdateType } = payload as {
+  const { poll } = payload as {
     poll: HMSPoll;
-    pollUpdateType: HMSPollUpdateType;
   };
 
   const dispatch = useDispatch();
@@ -67,13 +66,9 @@ export const HMSPollsQuizzesNotification: React.FC<
     <HMSNotification
       id={id}
       icon={<PollVoteIcon />}
-      text={
-        poll.createdBy
-          ? `${poll.createdBy.name} ${
-              pollUpdateType === HMSPollUpdateType.started ? 'started' : ''
-            } a new ${poll.type === HMSPollType.poll ? 'poll' : 'quiz'}`
-          : `A new ${poll.type === HMSPollType.poll ? 'poll' : 'quiz'} has started`
-      }
+      text={`A new ${
+        poll.type === HMSPollType.poll ? 'poll' : 'quiz'
+      } has started`}
       autoDismiss={false}
       dismissable={true}
       cta={
