@@ -124,7 +124,7 @@ const _HMSHLSMessage: React.FC<HMSHLSMessageProps> = ({ message }) => {
             {messageSender
               ? messageSender.isLocal
                 ? 'You'
-                : messageSender.name
+                : messageSender.name ?? 'Satvic Movement'
               : 'Satvic Movement'}
             {'   '}
           </Text>
