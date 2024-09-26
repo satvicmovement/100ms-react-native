@@ -12,9 +12,9 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { HMSPollState, HMSPollType } from '@100mslive/react-native-hms';
 
-import { useHMSRoomStyleSheet } from '../hooks-util';
+import { useHMSInstance, useHMSRoomStyleSheet } from '../hooks-util';
 import type { RootState } from '../redux';
-//import { HMSDangerButton } from './HMSDangerButton';
+import { HMSDangerButton } from './HMSDangerButton';
 import { PollAndQuizQuestionResponseCards } from './PollAndQuizQuestionResponseCards';
 import {
   popFromNavigationStack,
@@ -39,7 +39,7 @@ export const PollAndQuizVoting: React.FC<PollAndQuizVotingProps> = ({
   unmountScreenWithAnimation,
 }) => {
   const scrollViewRef = React.useRef<ScrollView>(null);
-  //const hmsInstance = useHMSInstance();
+  const hmsInstance = useHMSInstance();
   const dispatch = useDispatch();
 
   const selectedPoll = useSelector((state: RootState) => {
@@ -61,10 +61,10 @@ export const PollAndQuizVoting: React.FC<PollAndQuizVotingProps> = ({
       localPeerUserId === pollInitiatorUserID
     );
   });
-  // const canCreateOrEndPoll = useSelector((state: RootState) => {
-  //   const permissions = state.hmsStates.localPeer?.role?.permissions;
-  //   return permissions?.pollWrite;
-  // });
+  const canCreateOrEndPoll = useSelector((state: RootState) => {
+    const permissions = state.hmsStates.localPeer?.role?.permissions;
+    return permissions?.pollWrite;
+  });
   const headerTitle = useSelector((state: RootState) => {
     const pollsData = state.polls;
     if (pollsData.selectedPollId !== null) {
@@ -95,15 +95,15 @@ export const PollAndQuizVoting: React.FC<PollAndQuizVotingProps> = ({
     },
   }));
 
-  // const endPoll = async () => {
-  //   if (!selectedPoll || !canCreateOrEndPoll) {
-  //     return;
-  //   }
-  //   const result = await hmsInstance.interactivityCenter.stop(
-  //     selectedPoll.pollId
-  //   );
-  //   console.log('Poll ended', result);
-  // };
+  const endPoll = async () => {
+    if (!selectedPoll || !canCreateOrEndPoll) {
+      return;
+    }
+    const result = await hmsInstance.interactivityCenter.stop(
+      selectedPoll.pollId
+    );
+    console.log('Poll ended', result);
+  };
 
   const handleVote = (e: any) => {
     const handle = findNodeHandle(e.nativeEvent.target);
@@ -222,9 +222,11 @@ export const PollAndQuizVoting: React.FC<PollAndQuizVotingProps> = ({
         ) : null}
       </ScrollView>
 
-      {/* {selectedPoll &&
+      {/* sm modified user cannot end poll by clicking end button */}
+      {selectedPoll &&
       selectedPoll.state === HMSPollState.started &&
-      canCreateOrEndPoll ? (
+      canCreateOrEndPoll &&
+      false ? (
         <HMSDangerButton
           disabled={!selectedPoll}
           title={
@@ -239,7 +241,7 @@ export const PollAndQuizVoting: React.FC<PollAndQuizVotingProps> = ({
             alignSelf: 'flex-end',
           }}
         />
-      ) : null} // sm modified*/}
+      ) : null}
 
       {selectedPoll &&
       selectedPoll.state === HMSPollState.stopped &&

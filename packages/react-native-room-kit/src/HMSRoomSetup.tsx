@@ -472,7 +472,7 @@ export const HMSRoomSetup = () => {
           poll.createdBy &&
           reduxState.hmsStates.localPeer &&
           poll.createdBy.peerID === reduxState.hmsStates.localPeer.peerID &&
-          pollUpdateType === HMSPollUpdateType.started
+          pollUpdateType === HMSPollUpdateType.started //{/* sm modified stop triggering notifications for update */}
         ) {
           hmsInstance
             .sendHLSTimedMetadata([
