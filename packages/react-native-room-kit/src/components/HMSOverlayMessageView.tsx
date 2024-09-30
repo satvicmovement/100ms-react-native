@@ -118,7 +118,7 @@ const _HMSOverlayMessageView: React.FC<HMSMessageProps> = ({ message }) => {
           {messageSender
             ? messageSender.isLocal
               ? 'You'
-              : messageSender.name
+              : messageSender.name ?? 'Satvic Movement'
             : 'Satvic Movement'}
         </Text>
 
