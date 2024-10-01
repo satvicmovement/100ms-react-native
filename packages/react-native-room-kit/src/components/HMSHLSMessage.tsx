@@ -32,6 +32,7 @@ const _HMSHLSMessage: React.FC<HMSHLSMessageProps> = ({ message }) => {
   );
 
   const messageSender = message.sender;
+  console.log('rjstest messageSender 001' + JSON.stringify(messageSender));
 
   const hmsRoomStyles = useHMSRoomStyleSheet(
     (theme, typography) => ({
@@ -124,7 +125,9 @@ const _HMSHLSMessage: React.FC<HMSHLSMessageProps> = ({ message }) => {
             {messageSender
               ? messageSender.isLocal
                 ? 'You'
-                : messageSender.name ?? 'Satvic Movement'
+                : messageSender.name
+                ? messageSender.name
+                : 'Satvic Movement'
               : 'Satvic Movement'}
             {'   '}
           </Text>

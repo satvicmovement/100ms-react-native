@@ -49,6 +49,7 @@ const _HMSOverlayMessageView: React.FC<HMSMessageProps> = ({ message }) => {
   );
 
   const messageSender = message.sender;
+  console.log('rjstest messageSender 002' + JSON.stringify(messageSender));
 
   const hmsRoomStyles = useHMSRoomStyleSheet(
     (_theme, typography) => ({
@@ -118,7 +119,9 @@ const _HMSOverlayMessageView: React.FC<HMSMessageProps> = ({ message }) => {
           {messageSender
             ? messageSender.isLocal
               ? 'You'
-              : messageSender.name ?? 'Satvic Movement'
+              : messageSender.name
+              ? messageSender.name
+              : 'Satvic Movement'
             : 'Satvic Movement'}
         </Text>
 
