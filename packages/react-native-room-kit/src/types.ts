@@ -1,5 +1,9 @@
 import type { HMSException, HMSPeer } from '@100mslive/react-native-hms';
-import type { HMSIOSScreenShareConfig, OnLeaveHandler } from './utils/types';
+import type {
+  HMSIOSScreenShareConfig,
+  OnLeaveHandler,
+  OnSMCmdHandler,
+} from './utils/types';
 
 export enum MeetingState {
   NOT_JOINED,
@@ -64,6 +68,7 @@ export interface HMSPrebuiltCommonProps {
   smAppProps?: {
     chatEnabled: boolean;
   };
+  onSMCmd?: OnSMCmdHandler;
 }
 
 export type HMSPrebuiltConditionalProps =

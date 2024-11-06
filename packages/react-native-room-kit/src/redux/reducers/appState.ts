@@ -1,6 +1,6 @@
 import ActionTypes, { HmsStateActionTypes } from '../actionTypes';
 import { ChatBottomSheetTabs } from '../../utils/types';
-import type { PeerTrackNode } from '../../utils/types';
+import type { OnSMCmdHandler, PeerTrackNode } from '../../utils/types';
 import { SUPPORTED_ASPECT_RATIOS, ModalTypes } from '../../utils/types';
 import { PipModes } from '../../utils/types';
 import {
@@ -67,6 +67,7 @@ type IntialStateType = {
   hlsFullScreen: boolean;
   hlsStreamPaused_android: boolean;
   smChatEnabled: boolean;
+  onSMCmd: OnSMCmdHandler | undefined;
   selectedVirtualBackground: string | null;
   showClosedCaptions: boolean;
 };
@@ -111,6 +112,7 @@ const INITIAL_STATE: IntialStateType = {
   hlsFullScreen: true,
   hlsStreamPaused_android: false,
   smChatEnabled: true,
+  onSMCmd: undefined,
   selectedVirtualBackground: null,
   showClosedCaptions: false,
 };
@@ -398,6 +400,11 @@ const appReducer = (
         smChatEnabled: action.payload.chatenabled,
       };
     }
+    case ActionTypes.SET_SM_CMD_HDLR:
+      return {
+        ...state,
+        onSMCmd: action.payload.onSMCmd,
+      };
     case ActionTypes.SET_SELECTED_VIRTUAL_BG: {
       return {
         ...state,

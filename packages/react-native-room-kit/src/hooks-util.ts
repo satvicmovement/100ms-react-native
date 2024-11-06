@@ -67,6 +67,7 @@ import {
   OnLeaveReason,
   PeerListRefreshInterval,
   PipModes,
+  SMCmd,
 } from './utils/types';
 import { createPeerTrackNode, parseMetadata } from './utils/functions';
 import {
@@ -120,6 +121,7 @@ import {
   setReconnecting,
   setRoleChangeRequest,
   setSMChatEnabled,
+  setSMCmdHdlr,
   setStartingOrStoppingRecording,
   updateFullScreenPeerTrackNode,
   updateLocalPeerTrackNode,
@@ -1413,6 +1415,7 @@ export const useHMSMessages = () => {
     (state: RootState) =>
       state.hmsStates.localPeer?.role?.permissions?.changeRole
   );
+  const onSMCmd = useSelector((state: RootState) => state.app.onSMCmd);
   const canShowChat = useHMSConferencingScreenConfig(
     (conferencingScreenConfig) => !!conferencingScreenConfig?.elements?.chat
   );
@@ -1433,6 +1436,7 @@ export const useHMSMessages = () => {
         console.log('Ignoring Emoji Reaction Message: ', message);
       } else if (canShowChat) {
         //usage of name and peerID temporarily
+        let ignoreMsg = false;
         if (
           message.message === 'Chat is disabled now' &&
           !message.sender?.name &&
@@ -1445,8 +1449,32 @@ export const useHMSMessages = () => {
           !message.sender?.peerID
         ) {
           dispatch(setSMChatEnabled(true));
+        } else if (
+          message.message.startsWith('{') &&
+          !message.sender?.name &&
+          !message.sender?.peerID
+        ) {
+          let isHandlerInstalled = typeof onSMCmd === 'function';
+          if (isHandlerInstalled) {
+            ignoreMsg = true;
+            try {
+              let cmdmsg = JSON.parse(message.message);
+              let cmd = cmdmsg.cmd ?? '';
+              if (cmd === SMCmd.INTNT_PCHS && onSMCmd) {
+                onSMCmd(cmdmsg);
+              }
+            } catch (error) {
+              if (error instanceof SyntaxError) {
+                console.error('[SM_CMD] Failed to parse JSON:', error.message);
+              } else {
+                console.error('[SM_CMD] Unexpected error:', error);
+              }
+            }
+          }
         }
-        dispatch(addMessage(message));
+        if (!ignoreMsg) {
+          dispatch(addMessage(message));
+        }
       }
     };
 
@@ -2756,6 +2784,7 @@ export const useSavePropsToStore = (
     handleBackButton,
     autoEnterPipMode,
     smAppProps,
+    onSMCmd,
   } = props;
 
   dispatch(setPrebuiltData({ roomCode, token, options }));
@@ -2777,6 +2806,10 @@ export const useSavePropsToStore = (
     }
     //check if default init in redux store suffices or not
   }, [smAppProps]);
+
+  useEffect(() => {
+    dispatch(setSMCmdHdlr(onSMCmd));
+  }, [onSMCmd]);
 
   useEffect(() => {
     if (Platform.OS === 'android') {

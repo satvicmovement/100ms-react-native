@@ -92,6 +92,20 @@ export type HMSIOSScreenShareConfig = {
 };
 
 export type OnLeaveHandler = (reason: OnLeaveReason) => void;
+export type OnSMCmdHandler = (cmd: SMCmdDtls) => void;
+
+export type SMCmdDtls = {
+  cmd: SMCmd;
+  data: SMCmdPchs;
+};
+
+export enum SMCmd {
+  INTNT_PCHS = 'INTENT_PURCHASE',
+}
+
+export type SMCmdPchs = {
+  [key: string]: string | SMCmdPchs | SMCmdPchs[];
+};
 
 export const SUPPORTED_ASPECT_RATIOS = [
   { value: 16 / 9, id: '16:9' },

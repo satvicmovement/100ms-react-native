@@ -24,6 +24,7 @@ import type {
   HMSIOSScreenShareConfig,
   ModalTypes,
   OnLeaveHandler,
+  OnSMCmdHandler,
   PeerTrackNode,
   PipModes,
 } from '../../utils/types';
@@ -511,6 +512,11 @@ export const setAndroidHLSStreamPaused = (paused: boolean) => ({
 export const setSMChatEnabled = (chatenabled: boolean) => ({
   type: actionTypes.SET_SM_CHAT_ENABLED,
   payload: { chatenabled },
+});
+
+export const setSMCmdHdlr = (onSMCmd?: OnSMCmdHandler) => ({
+  type: actionTypes.SET_SM_CMD_HDLR,
+  payload: { onSMCmd },
 });
 
 export const setSelectedVirtualBackground = (vb: string | null) => ({
