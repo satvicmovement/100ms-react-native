@@ -67,7 +67,6 @@ import {
   OnLeaveReason,
   PeerListRefreshInterval,
   PipModes,
-  SMCmd,
 } from './utils/types';
 import { createPeerTrackNode, parseMetadata } from './utils/functions';
 import {
@@ -1436,7 +1435,7 @@ export const useHMSMessages = () => {
         console.log('Ignoring Emoji Reaction Message: ', message);
       } else if (canShowChat) {
         //usage of name and peerID temporarily
-        let ignoreMsg = false;
+        let isCmd = false;
         if (
           message.message === 'Chat is disabled now' &&
           !message.sender?.name &&
@@ -1456,11 +1455,11 @@ export const useHMSMessages = () => {
         ) {
           let isHandlerInstalled = typeof onSMCmd === 'function';
           if (isHandlerInstalled) {
-            ignoreMsg = true;
             try {
               let cmdmsg = JSON.parse(message.message);
               let cmd = cmdmsg.cmd ?? '';
-              if (cmd === SMCmd.INTNT_PCHS && onSMCmd) {
+              if (cmd.startsWith('SM_') && cmd.endsWith('_CMD') && onSMCmd) {
+                isCmd = true;
                 onSMCmd(cmdmsg);
               }
             } catch (error) {
@@ -1472,7 +1471,7 @@ export const useHMSMessages = () => {
             }
           }
         }
-        if (!ignoreMsg) {
+        if (!isCmd) {
           dispatch(addMessage(message));
         }
       }

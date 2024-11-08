@@ -96,15 +96,13 @@ export type OnSMCmdHandler = (cmd: SMCmdDtls) => void;
 
 export type SMCmdDtls = {
   cmd: SMCmd;
-  data: SMCmdPchs;
+  data: SMCmdParams;
 };
 
-export enum SMCmd {
-  INTNT_PCHS = 'INTENT_PURCHASE',
-}
+export type SMCmd = `SM_${string}_CMD`;
 
-export type SMCmdPchs = {
-  [key: string]: string | SMCmdPchs | SMCmdPchs[];
+export type SMCmdParams = {
+  [key: string]: string | SMCmdParams | SMCmdParams[];
 };
 
 export const SUPPORTED_ASPECT_RATIOS = [
