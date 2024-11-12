@@ -49,7 +49,6 @@ const _HMSOverlayMessageView: React.FC<HMSMessageProps> = ({ message }) => {
   );
 
   const messageSender = message.sender;
-  console.log('rjstest messageSender 002' + JSON.stringify(messageSender));
 
   const hmsRoomStyles = useHMSRoomStyleSheet(
     (_theme, typography) => ({

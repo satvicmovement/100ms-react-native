@@ -32,7 +32,6 @@ const _HMSHLSMessage: React.FC<HMSHLSMessageProps> = ({ message }) => {
   );
 
   const messageSender = message.sender;
-  console.log('rjstest messageSender 001' + JSON.stringify(messageSender));
 
   const hmsRoomStyles = useHMSRoomStyleSheet(
     (theme, typography) => ({

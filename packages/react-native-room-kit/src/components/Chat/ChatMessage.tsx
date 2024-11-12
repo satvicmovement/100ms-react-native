@@ -79,7 +79,6 @@ const _ChatMessage: React.FC<HMSHLSMessageProps> = ({ message }) => {
   };
 
   const messageSender = message.sender;
-  console.log('rjstest messageSender 003' + JSON.stringify(messageSender));
 
   const canTakeAction =
     allowPinningMessage || // can pin message, OR
