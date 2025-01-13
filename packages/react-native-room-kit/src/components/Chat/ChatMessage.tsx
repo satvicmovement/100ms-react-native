@@ -90,10 +90,9 @@ const _ChatMessage: React.FC<HMSHLSMessageProps> = ({ message }) => {
       message.sender.peerID !== localPeerId); // can remove participants
 
   const handleLinkPress = async (url: string) => {
-    const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
+    try {
       await Linking.openURL(url);
-    }
+    } catch (error) {}
   };
 
   return (
