@@ -1978,7 +1978,7 @@ export const useHMSConfig = () => {
     hmsConfig = new HMSConfig({
       authToken: token,
       username: storeState.user.userName,
-      captureNetworkQualityInPreview: true,
+      captureNetworkQualityInPreview: false,
       endpoint: storeState.user.endPoints?.init,
     });
 
