@@ -68,7 +68,7 @@ export const HLSViewerScreenContent: React.FC<
       </SafeAreaView>
 
       {isPipModeActive ? null : (
-        <>
+        <View style={{ flex: 1 }}>
           <LeaveRoomBottomSheet />
 
           <PreviewForRoleChangeModal />
@@ -84,7 +84,7 @@ export const HLSViewerScreenContent: React.FC<
               cancelModal={() => setModalVisible(ModalTypes.DEFAULT)}
             />
           </DefaultModal>
-        </>
+        </View>
       )}
     </View>
   );
