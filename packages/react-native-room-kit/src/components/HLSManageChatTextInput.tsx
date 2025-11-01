@@ -42,7 +42,7 @@ export const HLSManageChatTextInput = () => {
   const keyboardAvoidingStyles = React.useMemo(
     () => ({
       active: { width: chatWrapperConstraints.width - 32 },
-      inactive: { width: '100%' },
+      inactive: { width: '100%' as const },
     }),
     [chatWrapperConstraints]
   );

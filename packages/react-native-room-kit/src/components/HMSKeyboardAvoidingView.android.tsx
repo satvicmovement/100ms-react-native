@@ -1,9 +1,11 @@
 import * as React from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated'; // useDerivedValue, // useAnimatedStyle, // useAnimatedKeyboard,
+import type { AnimatedStyle } from 'react-native-reanimated';
 
 export interface HMSKeyboardAvoidingViewProps {
-  style?: StyleProp<Animated.AnimateStyle<StyleProp<ViewStyle>>>;
+  children?: React.ReactNode;
+  style?: StyleProp<AnimatedStyle<ViewStyle>>;
   bottomOffset?: number;
 }
 
